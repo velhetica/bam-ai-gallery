@@ -291,11 +291,11 @@ function build() {
   document.body.append(float);
   headIndex = -1;
 
-  const markBottom = (wordmark?.getBoundingClientRect().bottom || 48) + (window.innerWidth < 768 ? 10 : 14);
-  let rows = Math.max(1, Math.ceil(markBottom / metrics.row));
-  while (rows * metrics.row < markBottom) rows += 1;
-  bandHeight = rows * metrics.row;
-  baseRow = Math.max(1, rows);
+  const mastEl = document.querySelector('.mast');
+  const cover = Math.ceil(mastEl?.getBoundingClientRect().bottom || (wordmark?.getBoundingClientRect().bottom || 48) + 20);
+  bandHeight = cover;
+  const rows = Math.max(1, Math.ceil(cover / metrics.row));
+  baseRow = rows;
   layoutStage();
   placeCell(introDone ? plateIndex(window.scrollY) : 0, false);
   buildMastRule();
@@ -314,9 +314,10 @@ function applyBand() {
     document.body.insertBefore(band, document.querySelector('.mast'));
   }
   band.style.height = `${bandHeight}px`;
-  const mask = `linear-gradient(to bottom, transparent 0 ${bandHeight}px, #000 ${bandHeight}px)`;
-  ledger.style.webkitMaskImage = mask;
-  ledger.style.maskImage = mask;
+  band.style.background = '#080807';
+  document.documentElement.style.setProperty('--mast', `${bandHeight}px`);
+  ledger.style.webkitMaskImage = 'none';
+  ledger.style.maskImage = 'none';
 }
 
 function layoutStage() {
@@ -540,6 +541,7 @@ function applyScroll() {
   applyHead(progress);
   applyGauge(progress);
   applyQuiet();
+  clearMast();
   if (!introDone) return;
   const next = plateIndex(window.scrollY);
   if (next === plate) return;
@@ -710,6 +712,17 @@ function sectionEngaged(id) {
   const rect = section.getBoundingClientRect();
   const visible = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
   return visible > 72;
+}
+
+function clearMast() {
+  const mast = document.querySelector('.mast');
+  if (!mast) return;
+  const limit = mast.getBoundingClientRect().bottom + 2;
+  document.querySelectorAll('.action').forEach((el) => {
+    const rect = el.getBoundingClientRect();
+    const cover = rect.top < limit && rect.bottom > 0;
+    el.style.visibility = cover ? 'hidden' : '';
+  });
 }
 
 function applyQuiet() {
@@ -958,26 +971,23 @@ function layoutFlow(section) {
   const denied = square('denied');
   const appeal = square('appeal');
   const practice = square('practice');
-  const rejoinEl = board.querySelector('[data-node="rejoin"] .node-copy');
-  const rejoinBox = rejoinEl.getBoundingClientRect();
   const deniedCopy = board.querySelector('[data-node="denied"] .node-copy').getBoundingClientRect();
   const narrow = window.innerWidth <= 759;
   let main;
   let leak;
   let curve;
+  const rejoin = square('rejoin');
   if (narrow) {
-    const spine = insurer.x;
-    const land = Math.min(practice.y - 36, Math.max(appeal.y + 48, rejoinBox.top - origin.top - 12));
-    main = `M ${spine} ${insurer.y} V ${practice.y}`;
-    leak = `M ${spine} ${denied.y} H ${appeal.x}`;
-    curve = `M ${appeal.x} ${appeal.y} C ${appeal.x} ${appeal.y + 42}, ${spine + 10} ${land - 8}, ${spine} ${land}`;
+    const rail = insurer.left + insurer.width + 6;
+    main = `M ${rail} ${insurer.y} V ${practice.y}`;
+    leak = `M ${rail} ${denied.y} V ${appeal.y}`;
+    curve = `M ${appeal.left + appeal.width} ${appeal.y} Q ${rail + 2} ${(appeal.y + rejoin.y) / 2} ${rail} ${rejoin.y}`;
   } else {
     const gutter = denied.left - 16;
-    const endX = rejoinBox.left - origin.left - 14;
     const lowY = Math.max(appeal.y, deniedCopy.bottom - origin.top + 22);
     main = `M ${insurer.x} ${insurer.y} H ${practice.x}`;
     leak = `M ${denied.x} ${denied.y} H ${gutter} V ${appeal.y} H ${appeal.x}`;
-    curve = `M ${appeal.x} ${appeal.y} C ${endX} ${lowY}, ${endX} ${(lowY + insurer.y) / 2}, ${endX} ${insurer.y}`;
+    curve = `M ${appeal.x} ${appeal.y} C ${rejoin.x} ${lowY}, ${rejoin.x} ${(lowY + rejoin.y) / 2}, ${rejoin.x} ${rejoin.y}`;
   }
   const drawn = {
     main: svg.querySelector('[data-draw="main"]'),
@@ -1217,6 +1227,9 @@ function enterWorks(section) {
   });
   const eyebrow = section.querySelector('.eyebrow .line');
   if (eyebrow) plotInk(eyebrow, tl, 0, 0.55);
+  [...section.querySelectorAll('.story-title .line')].forEach((line, index) => {
+    plotInk(line, tl, 0.08 + index * 0.12, 0.72);
+  });
   if (!marker || !steps.length) return;
   steps.forEach((step, index) => {
     tl.to(marker, { top: step.offsetTop, duration: 0.26, ease: 'power2.out' }, 0.35 + index * 0.28);
@@ -1267,8 +1280,12 @@ function boot() {
     });
   });
   if (!reduced) window.addEventListener('scroll', onScroll, { passive: true });
-  else window.addEventListener('scroll', applyQuiet, { passive: true });
+  else window.addEventListener('scroll', () => {
+    applyQuiet();
+    clearMast();
+  }, { passive: true });
   applyQuiet();
+  clearMast();
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       pauseAmbient();
