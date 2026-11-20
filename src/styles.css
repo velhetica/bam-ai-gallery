@@ -1,0 +1,254 @@
+@font-face {
+  font-family: "Canela";
+  src: url("./fonts/Canela-Light-Web.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("./fonts/Canela-LightItalic-Web.woff2") format("woff2");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("./fonts/Canela-Regular-Web.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --ink: #080807;
+  --stone: #181714;
+  --cream: #e9e2d2;
+  --muted: #aba393;
+  --smoke: #c8b994;
+  --champagne: #e1d3af;
+  --focus: #f1deab;
+  --datum: clamp(1.25rem, 4.4vw, 4.75rem);
+  --sans: "Montserrat", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --display: "Canela", "Iowan Old Style", Palatino, "Palatino Linotype", serif;
+  color-scheme: dark;
+  background: var(--ink);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ink);
+  scrollbar-color: var(--stone) var(--ink);
+  scrollbar-width: thin;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--ink);
+  color: var(--cream);
+}
+
+body {
+  font-family: var(--sans);
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--champagne);
+  color: var(--ink);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ink);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--stone);
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 4px;
+}
+
+#installation {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.mast {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  padding: calc(clamp(1.2rem, 2.4vh, 1.85rem) + env(safe-area-inset-top)) var(--datum) 0;
+  pointer-events: none;
+}
+
+.wordmark {
+  display: block;
+  width: 11.25rem;
+  pointer-events: auto;
+  color: var(--cream);
+}
+
+.wordmark svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+main {
+  position: relative;
+  z-index: 1;
+}
+
+.room {
+  display: flex;
+  align-items: flex-end;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 0 var(--datum) calc(clamp(4.25rem, 11vh, 7.5rem) + env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+
+.room-hero {
+  align-items: center;
+  padding-bottom: 0;
+}
+
+.placard {
+  width: min(36rem, 100%);
+  pointer-events: auto;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+  text-align: left;
+}
+
+h1 {
+  max-width: 11em;
+  color: var(--cream);
+  font-family: var(--display);
+  font-weight: 300;
+  font-style: normal;
+  font-size: clamp(2.3rem, 4.55vw, 4.55rem);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+}
+
+.note {
+  max-width: 28ch;
+  margin-top: 1.65rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.plate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.7rem;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 1.45;
+}
+
+.hairline {
+  display: block;
+  width: 2.6rem;
+  height: 1px;
+  background: var(--smoke);
+}
+
+.plate + .note {
+  margin-top: 0.85rem;
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 2.75rem;
+  padding: 0.85rem 1.2rem;
+  border: 0;
+  border-radius: 0;
+  background: var(--champagne);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 0.84rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-decoration: none;
+  transition: background-color 0.35s cubic-bezier(0.22, 0.08, 0.18, 1);
+}
+
+.action:hover {
+  background: var(--focus);
+}
+
+.action:active {
+  background: var(--smoke);
+}
+
+@media (max-width: 759px) {
+  .wordmark {
+    width: 8.75rem;
+  }
+
+  .room-hero {
+    align-items: flex-end;
+    padding-bottom: calc(clamp(2.4rem, 8vh, 3.75rem) + env(safe-area-inset-bottom));
+  }
+
+  h1 {
+    font-size: clamp(2.15rem, 9vw, 3.15rem);
+  }
+
+  .note {
+    margin-top: 1.15rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action {
+    transition: none;
+  }
+}
