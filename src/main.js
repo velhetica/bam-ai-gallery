@@ -1261,9 +1261,23 @@ function enterWorks(section) {
 
 function alignPhoto() {
   const fig = document.querySelector('.works-photo');
-  if (!fig) return;
-  fig.style.width = '';
-  fig.style.marginLeft = '';
+  const section = document.querySelector('#works');
+  if (!fig || !section) return;
+  if (fig.parentElement !== document.body) document.body.append(fig);
+  const narrow = window.innerWidth < 768;
+  const copy = section.querySelector('.works-copy');
+  fig.style.mixBlendMode = 'lighten';
+  fig.style.zIndex = '2';
+  if (narrow) {
+    const copyBottom = copy ? copy.offsetTop + copy.offsetHeight : section.offsetHeight * 0.55;
+    fig.style.top = `${section.offsetTop + copyBottom + 24}px`;
+    fig.style.right = '-12vw';
+    fig.style.width = 'min(1536px, 118vw)';
+    return;
+  }
+  fig.style.top = `${section.offsetTop + window.innerHeight * 0.06}px`;
+  fig.style.right = '-6vw';
+  fig.style.width = 'min(1536px, 86vw)';
 }
 
 function boot() {
