@@ -704,16 +704,20 @@ function routePoints() {
   return points.length > 1 ? points : null;
 }
 
-function industryQuiet() {
-  const section = document.querySelector('#industry');
+function sectionEngaged(id) {
+  const section = document.querySelector(id);
   if (!section) return false;
   const rect = section.getBoundingClientRect();
-  return rect.top < window.innerHeight * 0.62 && rect.bottom > window.innerHeight * 0.28;
+  const visible = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
+  return visible > 72;
 }
 
 function applyQuiet() {
-  const quiet = industryQuiet();
-  document.body.classList.toggle('is-industry', quiet);
+  const industry = sectionEngaged('#industry');
+  const works = sectionEngaged('#works');
+  document.body.classList.toggle('is-industry', industry && !works);
+  document.body.classList.toggle('is-works', works);
+  const quiet = industry || works;
   if (routeLayer) routeLayer.style.visibility = quiet ? 'hidden' : '';
   if (!quiet) return;
   activeRoutes.forEach((route) => route.kill());
@@ -721,7 +725,7 @@ function applyQuiet() {
 }
 
 function spawnRoute() {
-  if (reduced || document.hidden || !routeLayer || activeRoutes.length >= 2 || industryQuiet()) return;
+  if (reduced || document.hidden || !routeLayer || activeRoutes.length >= 2 || sectionEngaged('#industry') || sectionEngaged('#works')) return;
   const points = routePoints();
   if (!points) return;
   const path = document.createElementNS(SVG_NS, 'path');
@@ -926,25 +930,88 @@ function revealPlacard(section) {
   plotSection(section);
 }
 
-function prepareJourney(section) {
-  section.querySelectorAll('.journey-svg path[data-draw]').forEach((path) => {
-    const length = path.getTotalLength();
-    if (!length) return;
+function pointOf(el, origin) {
+  const rect = el.getBoundingClientRect();
+  return {
+    x: rect.left - origin.left + rect.width / 2,
+    y: rect.top - origin.top + rect.height / 2,
+    left: rect.left - origin.left,
+    top: rect.top - origin.top,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function layoutFlow(section) {
+  const board = section.querySelector('[data-flow]');
+  const svg = board?.querySelector('.flow-svg');
+  if (!board || !svg) return null;
+  const width = board.clientWidth;
+  const height = board.clientHeight;
+  if (width < 2 || height < 2) return null;
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('width', String(width));
+  svg.setAttribute('height', String(height));
+  const origin = board.getBoundingClientRect();
+  const square = (name) => pointOf(board.querySelector(`[data-node="${name}"] .sq`), origin);
+  const insurer = square('insurer');
+  const denied = square('denied');
+  const appeal = square('appeal');
+  const practice = square('practice');
+  const rejoinEl = board.querySelector('[data-node="rejoin"] .node-copy');
+  const rejoinBox = rejoinEl.getBoundingClientRect();
+  const deniedCopy = board.querySelector('[data-node="denied"] .node-copy').getBoundingClientRect();
+  const narrow = window.innerWidth <= 759;
+  let main;
+  let leak;
+  let curve;
+  if (narrow) {
+    const spine = insurer.x;
+    const land = Math.min(practice.y - 36, Math.max(appeal.y + 48, rejoinBox.top - origin.top - 12));
+    main = `M ${spine} ${insurer.y} V ${practice.y}`;
+    leak = `M ${spine} ${denied.y} H ${appeal.x}`;
+    curve = `M ${appeal.x} ${appeal.y} C ${appeal.x} ${appeal.y + 42}, ${spine + 10} ${land - 8}, ${spine} ${land}`;
+  } else {
+    const gutter = denied.left - 16;
+    const endX = rejoinBox.left - origin.left - 14;
+    const lowY = Math.max(appeal.y, deniedCopy.bottom - origin.top + 22);
+    main = `M ${insurer.x} ${insurer.y} H ${practice.x}`;
+    leak = `M ${denied.x} ${denied.y} H ${gutter} V ${appeal.y} H ${appeal.x}`;
+    curve = `M ${appeal.x} ${appeal.y} C ${endX} ${lowY}, ${endX} ${(lowY + insurer.y) / 2}, ${endX} ${insurer.y}`;
+  }
+  const drawn = {
+    main: svg.querySelector('[data-draw="main"]'),
+    leak: svg.querySelector('[data-draw="leak"]'),
+    curve: svg.querySelector('[data-draw="curve"]'),
+  };
+  drawn.main.setAttribute('d', main);
+  drawn.leak.setAttribute('d', leak);
+  drawn.curve.setAttribute('d', curve);
+  const played = section.dataset.played === '1' || reduced;
+  Object.values(drawn).forEach((path) => {
+    const length = path.getTotalLength() || 1;
     path.style.strokeDasharray = `${length}`;
-    path.style.strokeDashoffset = reduced ? '0' : `${length}`;
+    path.style.strokeDashoffset = played ? '0' : `${length}`;
   });
+  return svg;
+}
+
+function prepareJourney(section) {
+  layoutFlow(section);
   if (reduced) {
-    section.querySelectorAll('.node-paid, .step-cell').forEach((el) => {
+    section.querySelectorAll('.sq.is-paid, .step-cell').forEach((el) => {
       el.style.opacity = '1';
     });
     section.querySelectorAll('.step').forEach((step) => {
-      step.style.setProperty('--drawn', '1');
+      step.style.setProperty('--rule', '1');
     });
   }
 }
 
 function flowSvg(section) {
-  return [...section.querySelectorAll('.journey-svg')].find((item) => item.getClientRects().length) || null;
+  const svg = section.querySelector('.flow-svg');
+  if (!svg || !svg.getClientRects().length) return null;
+  return svg;
 }
 
 function drawJourney(section, tl, start) {
@@ -956,7 +1023,7 @@ function drawJourney(section, tl, start) {
     path.style.strokeDasharray = `${length}`;
     tl.fromTo(path, { strokeDashoffset: length }, { strokeDashoffset: 0, duration: path.dataset.draw === 'curve' ? 1.15 : 0.85, ease: 'power1.out' }, start + index * 0.16);
   });
-  const paid = svg.querySelector('.node-paid');
+  const paid = section.querySelector('.sq.is-paid');
   if (paid) tl.to(paid, { opacity: 1, duration: 0.25, ease: 'none' }, start + Math.max(0.4, paths.length * 0.16));
 }
 
@@ -1010,6 +1077,7 @@ function placePacket(el, path, distance, svg) {
 }
 
 function spawnPacket(host, divert, appeal) {
+  if (moneyPackets.length >= 3) return;
   const el = document.createElement('i');
   el.className = 'packet';
   host.append(el);
@@ -1029,10 +1097,10 @@ function moneyFrame(now) {
   moneyStamp = now;
   const scale = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width || 1;
   const step = (72 / scale) * dt;
-  if (now - moneySpawn > 1100) {
+  if (now - moneySpawn > 1900) {
     moneySpawn = now;
     moneySerial += 1;
-    spawnPacket(host, moneySerial % 5 === 0, moneySerial % 40 === 0);
+    spawnPacket(host, moneySerial % 5 === 0, moneySerial % 20 === 0);
   }
   for (let i = moneyPackets.length - 1; i >= 0; i -= 1) {
     const packet = moneyPackets[i];
@@ -1067,6 +1135,7 @@ function moneyFrame(now) {
       }
       if (packet.leg === 'leak') {
         packet.el.classList.add('is-dim');
+        packet.el.style.opacity = '0.14';
         packet.hold = 1.6;
         placePacket(packet.el, flow.leak, length, svg);
         continue;
@@ -1076,6 +1145,8 @@ function moneyFrame(now) {
       continue;
     }
     placePacket(packet.el, path, packet.dist, svg);
+    const progress = length ? Math.min(1, packet.dist / length) : 0;
+    packet.el.style.opacity = String(0.12 + 0.32 * Math.sin(Math.PI * progress));
   }
 }
 
@@ -1112,6 +1183,7 @@ function freezePackets(section) {
 
 function enterIndustry(section) {
   if (section.dataset.played) return;
+  layoutFlow(section);
   section.dataset.played = '1';
   if (reduced) {
     freezePackets(section);
@@ -1122,15 +1194,7 @@ function enterIndustry(section) {
   [...section.querySelectorAll('.line')].forEach((line, index) => {
     plotInk(line, tl, 0.2 + index * 0.12, line.closest('.story-title') ? 0.8 : 0.62);
   });
-  tl.add(() => {
-    section.querySelectorAll('.journey-svg path[data-draw]').forEach((path) => {
-      const length = path.getTotalLength();
-      if (!length) return;
-      path.style.strokeDasharray = `${length}`;
-      path.style.strokeDashoffset = '0';
-    });
-    startMoney();
-  });
+  tl.add(() => startMoney());
 }
 
 function enterWorks(section) {
@@ -1159,33 +1223,11 @@ function enterWorks(section) {
   });
 }
 
-function alignPhoto() {
-  const fig = document.querySelector('.works-photo');
-  const section = document.querySelector('#works');
-  if (!fig || !section) return;
-  if (fig.parentElement !== document.body) document.body.append(fig);
-  const narrow = window.innerWidth < 768;
-  const copy = section.querySelector('.works-copy');
-  fig.style.mixBlendMode = 'lighten';
-  fig.style.zIndex = '2';
-  if (narrow) {
-    const copyBottom = copy ? copy.offsetTop + copy.offsetHeight : section.offsetHeight * 0.55;
-    fig.style.top = `${section.offsetTop + copyBottom + 24}px`;
-    fig.style.right = '-12vw';
-    fig.style.width = 'min(1536px, 118vw)';
-    return;
-  }
-  fig.style.top = `${section.offsetTop + window.innerHeight * 0.06}px`;
-  fig.style.right = '-6vw';
-  fig.style.width = 'min(1536px, 86vw)';
-}
-
 function boot() {
   paintGrain();
   mountSectionRules();
   mountBranches();
   layout();
-  alignPhoto();
   document.querySelectorAll('.story-industry').forEach(prepareJourney);
   rooms.forEach((section) => {
     if (section.classList.contains('room-hero')) return;
@@ -1225,6 +1267,8 @@ function boot() {
     });
   });
   if (!reduced) window.addEventListener('scroll', onScroll, { passive: true });
+  else window.addEventListener('scroll', applyQuiet, { passive: true });
+  applyQuiet();
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       pauseAmbient();
@@ -1248,7 +1292,10 @@ window.addEventListener('resize', () => {
     plate = plateIndex(window.scrollY);
     placeCell(plate, false);
     applyScroll();
-    alignPhoto();
+    document.querySelectorAll('.story-industry').forEach((section) => {
+      layoutFlow(section);
+    });
+    moneyPackets.splice(0).forEach((packet) => packet.el.remove());
   } else {
     lines.forEach((line) => {
       line.style.opacity = '0';

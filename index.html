@@ -51,43 +51,47 @@
           <span class="line"><span>Insurers deny.</span></span>
           <span class="line"><span>Almost nobody fights back.</span></span>
         </h2>
-        <div class="money">
-          <div class="journey journey-wide">
-            <svg class="journey-svg" viewBox="0 0 1200 280" role="img" aria-label="Money moves from the insurer to the practice. About 1 in 5 is denied. Fewer than 1 percent are appealed, and 80.7 percent of those appeals are overturned.">
-              <path data-draw="main" d="M 72 64 H 1128" />
-              <path data-draw="leak" d="M 560 64 V 210" />
-              <path data-draw="curve" d="M 560 210 C 760 260 900 180 900 64" />
-              <rect class="node-sq" x="64" y="56" width="16" height="16" />
-              <rect class="node-sq" x="552" y="56" width="16" height="16" />
-              <rect class="node-sq" x="552" y="202" width="16" height="16" />
-              <rect class="node-paid" x="1120" y="56" width="16" height="16" />
-            </svg>
-            <div class="packets" aria-hidden="true"></div>
-          </div>
-          <div class="journey journey-stack">
-            <svg class="journey-svg" viewBox="0 0 320 520" role="img" aria-label="Money moves from the insurer to the practice. About 1 in 5 is denied. Fewer than 1 percent are appealed, and 80.7 percent of those appeals are overturned.">
-              <path data-draw="main" d="M 48 28 V 492" />
-              <path data-draw="leak" d="M 48 180 H 168" />
-              <path data-draw="curve" d="M 168 180 C 250 180 250 340 48 340" />
-              <rect class="node-sq" x="40" y="20" width="16" height="16" />
-              <rect class="node-sq" x="40" y="172" width="16" height="16" />
-              <rect class="node-sq" x="160" y="172" width="16" height="16" />
-              <rect class="node-paid" x="40" y="484" width="16" height="16" />
-            </svg>
-            <div class="packets" aria-hidden="true"></div>
-          </div>
-          <div class="money-notes">
-            <div class="money-note">
-              <p class="node-name">Insurer</p>
+        <div class="flow" data-flow>
+          <svg class="flow-svg" aria-hidden="true">
+            <path data-draw="main" d="" />
+            <path data-draw="leak" d="" />
+            <path data-draw="curve" d="" />
+          </svg>
+          <div class="packets" aria-hidden="true"></div>
+          <div class="flow-board">
+            <div class="flow-node" data-node="insurer">
+              <i class="sq"></i>
+              <div class="node-copy">
+                <span class="node-name">Insurer</span>
+              </div>
             </div>
-            <div class="money-note">
-              <p class="node-name">Denied</p>
-              <p class="stat"><span class="line"><span class="figure-num">1 in 5</span></span><span class="figure-label">in-network claims denied by ACA marketplace plans in 2023</span></p>
-              <p class="stat"><span class="line"><span class="figure-num">&lt;1%</span></span><span class="figure-label">of those denials were ever appealed</span></p>
+            <div class="flow-node" data-node="denied">
+              <i class="sq"></i>
+              <div class="node-copy">
+                <span class="node-name">Denied</span>
+                <span class="figure-num">1 in 5</span>
+                <span class="figure-label">in-network claims denied by ACA marketplace plans in 2023</span>
+              </div>
             </div>
-            <div class="money-note">
-              <p class="stat"><span class="line"><span class="figure-num">80.7%</span></span><span class="figure-label">of appealed Medicare Advantage prior auth denials were overturned in 2024</span></p>
-              <p class="node-name">Practice</p>
+            <div class="flow-node" data-node="appeal">
+              <i class="sq"></i>
+              <div class="node-copy">
+                <span class="node-name">Appeal</span>
+                <span class="figure-num">&lt;1%</span>
+                <span class="figure-label">of those denials were ever appealed</span>
+              </div>
+            </div>
+            <div class="flow-node is-rejoin" data-node="rejoin">
+              <div class="node-copy">
+                <span class="figure-num">80.7%</span>
+                <span class="figure-label">of appealed Medicare Advantage prior auth denials were overturned in 2024</span>
+              </div>
+            </div>
+            <div class="flow-node" data-node="practice">
+              <i class="sq is-paid"></i>
+              <div class="node-copy">
+                <span class="node-name">Practice</span>
+              </div>
             </div>
           </div>
         </div>
@@ -129,11 +133,11 @@
             <i class="step-cell" aria-hidden="true"></i>
           </ol>
           <ol class="agent-index">
-            <li><span>Before the visit</span> Verification and eligibility. Coverage and benefits checked on every patient.</li>
-            <li><span>Before surgery</span> Prior authorization. Submitted, tracked, approved before you operate.</li>
-            <li><span>Before billing</span> Claim scrubbing. Every claim checked against payer rules and your fee schedules.</li>
-            <li><span>After payment</span> Payment posting. Posted and reconciled so underpayments surface.</li>
-            <li><span>After a denial</span> Denials and appeals. Worked and appealed so the first no isn’t the last word.</li>
+            <li tabindex="0"><span>Verification &amp; eligibility</span><em>Coverage and benefits checked on every patient.</em></li>
+            <li tabindex="0"><span>Prior authorization</span><em>Submitted, tracked, and approved before you operate.</em></li>
+            <li tabindex="0"><span>Claim scrubbing</span><em>Every claim checked against payer rules and your fee schedules.</em></li>
+            <li tabindex="0"><span>Payment posting</span><em>Posted and reconciled so underpayments surface.</em></li>
+            <li tabindex="0"><span>Denials &amp; appeals</span><em>Worked and appealed so the first no isn’t the last word.</em></li>
           </ol>
         </div>
         <!-- Swap the photograph by replacing public/how-it-works.avif and public/how-it-works.webp. Keep them at native 1536×1024. Do not upscale. -->
