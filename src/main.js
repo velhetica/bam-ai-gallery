@@ -6,13 +6,11 @@ gsap.registerPlugin(ScrollTrigger);
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const ledger = document.querySelector('.ledger');
 const wordmark = document.querySelector('.wordmark');
-const heroLines = document.querySelectorAll('.room-hero .line > span');
 const heroAction = document.querySelector('.room-hero .action');
 const rooms = [...document.querySelectorAll('.room')];
 
 let metrics = null;
 let cell = null;
-let shifts = [];
 let headRows = [];
 let accentRows = [];
 let headIndex = -1;
@@ -21,11 +19,23 @@ let plate = -1;
 let reveal = 0;
 let introDone = false;
 let scheduled = false;
+let mastRule = null;
+let mastDrawn = false;
+let glint = null;
+let breath = 1;
+let headDrift = 0;
+let ambientOn = false;
+let ambientRaf = 0;
+let glintTimer = 0;
+let cellTimer = 0;
+let lastHeadStep = 0;
+let nudgeToken = 0;
 
 function gridMetrics() {
   const dpr = window.devicePixelRatio || 1;
-  const colPx = Math.max(1, Math.round(96 * dpr));
-  const rowPx = Math.max(1, Math.round(64 * dpr));
+  const narrow = window.innerWidth < 768;
+  const colPx = Math.max(1, Math.round((narrow ? 48 : 96) * dpr));
+  const rowPx = Math.max(1, Math.round((narrow ? 32 : 64) * dpr));
   const mark = wordmark?.getBoundingClientRect().left || 0;
   return {
     line: 1 / dpr,
@@ -80,6 +90,7 @@ function paintGrain() {
 function mountSectionRules() {
   const line = gridMetrics().line;
   rooms.forEach((section) => {
+    if (section.classList.contains('room-hero')) return;
     const rule = document.createElement('div');
     rule.className = 'section-rule';
     rule.style.height = `${line}px`;
@@ -111,10 +122,12 @@ function drawSectionRule(section, options = {}) {
   const tickStart = options.tickStart ?? Math.max(0, width - 96);
   const tickEnd = options.tickEnd ?? width;
   const ticks = [];
-  for (let x = tickStart; x <= tickEnd + 0.1; x += 16) {
+  const minor = metrics.col / 6;
+  const major = metrics.col;
+  for (let x = tickStart; x <= tickEnd + 0.1; x += minor) {
     const tick = document.createElement('div');
     tick.className = 'section-tick';
-    const long = Math.abs((x - tickStart) % 96) < 1;
+    const long = Math.abs((x - tickStart) % major) < minor * 0.6;
     tick.style.left = `${x}px`;
     tick.style.top = `${pack.line}px`;
     tick.style.width = `${pack.line}px`;
@@ -203,6 +216,7 @@ function cellBox(step) {
 
 function placeCell(step, animate) {
   if (!cell || !metrics) return;
+  nudgeToken += 1;
   const box = cellBox(step);
   const left = box.left + metrics.line;
   const top = box.top + metrics.line;
@@ -213,7 +227,7 @@ function placeCell(step, animate) {
     if (introDone || reduced) cell.style.clipPath = 'inset(0% 0% 0% 0%)';
     return;
   }
-  gsap.to(cell, { left, top, duration: 0.5, ease: 'power2.inOut', overwrite: 'auto' });
+  gsap.to(cell, { left, top, duration: 0.26, ease: 'power2.out', overwrite: 'auto' });
 }
 
 function build() {
@@ -268,15 +282,99 @@ function build() {
   });
 
   ledger.replaceChildren(base, accent, float);
-  shifts = [base, accentShift, float];
   headIndex = -1;
 
   const markBottom = (wordmark?.getBoundingClientRect().bottom || 48) + 12;
   baseRow = Math.max(1, Math.ceil(markBottom / metrics.row));
-  const heroRule = document.querySelector('#entrance .section-rule');
-  if (heroRule) heroRule.style.top = `${baseRow * metrics.row}px`;
   placeCell(introDone ? plateIndex(window.scrollY) : 0, false);
+  buildMastRule();
+  ensureGlint();
   return baseLines;
+}
+
+function ruleColumn() {
+  const width = window.innerWidth;
+  const textRight = document.querySelector('.room-hero .placard')?.getBoundingClientRect().right ?? width * 0.46;
+  const cols = [];
+  for (let x = metrics.originX; x <= width - metrics.line; x += metrics.col) cols.push(snap(x));
+  const cellX = cellBox(0).left;
+  const open = cols.filter((x) => x > textRight + 4 && Math.abs(x - cellX) > metrics.col * 0.45);
+  if (!open.length) return snap(metrics.originX);
+  const target = width * 0.68;
+  return open.reduce((best, x) => (Math.abs(x - target) < Math.abs(best - target) ? x : best));
+}
+
+function buildMastRule() {
+  if (!mastRule) {
+    mastRule = document.createElement('div');
+    mastRule.className = 'mast-rule';
+    mastRule.setAttribute('aria-hidden', 'true');
+    const bar = document.createElement('div');
+    bar.className = 'mast-rule-bar';
+    mastRule.append(bar);
+  }
+  mastRule.querySelectorAll('.mast-tick').forEach((tick) => tick.remove());
+  const height = window.innerHeight;
+  const x = ruleColumn();
+  const alongDatum = Math.abs(x - metrics.originX) < 1;
+  const minor = metrics.col / 6;
+  const count = Math.floor(height / minor);
+  const ticks = [];
+  for (let i = 1; i <= count; i += 1) {
+    const tick = document.createElement('div');
+    tick.className = 'mast-tick';
+    const y = snap(i * minor);
+    const tickW = i % 6 === 0 ? 11 : 5;
+    tick.style.left = alongDatum ? `${-tickW}px` : `${metrics.line}px`;
+    tick.style.top = `${y}px`;
+    tick.style.width = `${tickW}px`;
+    tick.style.height = `${metrics.line}px`;
+    mastRule.append(tick);
+    ticks.push({ tick, at: y / height });
+  }
+  mastRule._ticks = ticks;
+  mastRule.style.left = `${x}px`;
+  mastRule.style.top = '0px';
+  mastRule.style.width = `${metrics.line}px`;
+  mastRule.style.height = `${height}px`;
+  ledger.append(mastRule);
+  if (reduced || mastDrawn) {
+    const bar = mastRule.querySelector('.mast-rule-bar');
+    if (bar) bar.style.transform = 'none';
+    ticks.forEach(({ tick }) => {
+      tick.style.opacity = '1';
+    });
+  }
+}
+
+function drawMast(timeline, start) {
+  if (!mastRule || mastDrawn) return;
+  mastDrawn = true;
+  const bar = mastRule.querySelector('.mast-rule-bar');
+  const ticks = mastRule._ticks || [];
+  if (reduced || !timeline) {
+    if (bar) bar.style.transform = 'none';
+    ticks.forEach(({ tick }) => {
+      tick.style.opacity = '1';
+    });
+    return;
+  }
+  timeline.fromTo(bar, { scaleY: 0 }, { scaleY: 1, duration: 1.05, ease: 'power2.inOut' }, start);
+  ticks.forEach(({ tick, at }) => {
+    timeline.fromTo(tick, { opacity: 0 }, { opacity: 1, duration: 0.04, ease: 'none' }, start + at * 1.05);
+  });
+}
+
+function ensureGlint() {
+  if (!glint) {
+    glint = document.createElement('div');
+    glint.className = 'sheet-glint';
+    glint.setAttribute('aria-hidden', 'true');
+  }
+  ledger.append(glint);
+  glint.style.height = `${metrics.line}px`;
+  glint.style.width = `${Math.max(16, metrics.col * 0.34)}px`;
+  return glint;
 }
 
 function circleTarget(progress) {
@@ -296,13 +394,14 @@ function applyCircle(progress) {
   const target = circleTarget(progress);
   accent.style.setProperty('--mask-x', `${target.x}px`);
   accent.style.setProperty('--mask-y', `${target.y}px`);
-  accent.style.setProperty('--mask-r', `${target.radius * reveal}px`);
+  accent.style.setProperty('--mask-r', `${target.radius * reveal * breath}px`);
 }
 
 function applyHead(progress) {
   const count = headRows.length;
   if (!count) return;
-  const index = Math.min(count - 1, Math.max(0, Math.round(progress * (count - 1))));
+  const base = Math.min(count - 1, Math.max(0, Math.round(progress * (count - 1))));
+  const index = (base + headDrift) % count;
   if (index === headIndex) return;
   if (headIndex >= 0) {
     headRows[headIndex]?.classList.remove('is-head');
@@ -311,15 +410,6 @@ function applyHead(progress) {
   headIndex = index;
   headRows[index]?.classList.add('is-head');
   accentRows[index]?.classList.add('is-head');
-}
-
-function applyShift(scrollY) {
-  const raw = reduced ? 0 : Math.sin((scrollY / window.innerHeight) * Math.PI) * metrics.col;
-  const x = Math.abs(raw) < 0.4 ? 0 : raw;
-  const value = x === 0 ? 'none' : `translate3d(${x}px, 0, 0)`;
-  shifts.forEach((layer) => {
-    layer.style.transform = value;
-  });
 }
 
 function scrollProgress() {
@@ -341,7 +431,6 @@ function applyScroll() {
   const progress = scrollProgress();
   applyCircle(progress);
   applyHead(progress);
-  applyShift(window.scrollY);
   if (!introDone) return;
   const next = plateIndex(window.scrollY);
   if (next === plate) return;
@@ -360,42 +449,206 @@ function onScroll() {
 
 function showType() {
   if (wordmark) wordmark.style.clipPath = 'none';
-  heroLines.forEach((line) => {
-    line.style.transform = 'none';
+  document.querySelectorAll('.plot-ink, .line > span, .plate, .note, .action').forEach((el) => {
+    el.style.clipPath = 'none';
+    el.style.transform = 'none';
   });
-  if (heroAction) heroAction.style.clipPath = 'none';
+  document.querySelectorAll('.plot-pen').forEach((pen) => {
+    pen.style.opacity = '0';
+  });
   if (cell) cell.style.clipPath = 'inset(0% 0% 0% 0%)';
   ledger.querySelectorAll('.ledger-line').forEach((line) => {
     line.style.opacity = '1';
   });
+  if (mastRule) {
+    const bar = mastRule.querySelector('.mast-rule-bar');
+    if (bar) bar.style.transform = 'none';
+    mastRule.querySelectorAll('.mast-tick').forEach((tick) => {
+      tick.style.opacity = '1';
+    });
+  }
+}
+
+function hostFor(el) {
+  if (el.classList.contains('line')) {
+    const ink = el.querySelector(':scope > span');
+    ink.classList.add('plot-ink');
+    let pen = el.querySelector(':scope > .plot-pen');
+    if (!pen) {
+      pen = document.createElement('i');
+      pen.className = 'plot-pen';
+      pen.setAttribute('aria-hidden', 'true');
+      el.append(pen);
+    }
+    el.classList.add('plot-line');
+    pen.style.width = `${metrics.line}px`;
+    return { ink, pen };
+  }
+  if (el.parentElement?.classList.contains('plot-line')) {
+    const pen = el.parentElement.querySelector('.plot-pen');
+    pen.style.width = `${metrics.line}px`;
+    return { ink: el, pen };
+  }
+  const host = document.createElement('span');
+  host.className = 'plot-line';
+  el.parentNode.insertBefore(host, el);
+  host.append(el);
+  el.classList.add('plot-ink');
+  const pen = document.createElement('i');
+  pen.className = 'plot-pen';
+  pen.setAttribute('aria-hidden', 'true');
+  pen.style.width = `${metrics.line}px`;
+  host.append(pen);
+  return { ink: el, pen };
+}
+
+function plotInk(el, tl, at, duration) {
+  const { ink, pen } = hostFor(el);
+  if (reduced) {
+    ink.style.clipPath = 'none';
+    pen.style.opacity = '0';
+    return;
+  }
+  tl.fromTo(
+    ink,
+    { clipPath: 'inset(0 0 0 100%)' },
+    { clipPath: 'inset(0 0 0 0%)', duration, ease: 'power1.out' },
+    at,
+  );
+  tl.fromTo(pen, { left: '100%', opacity: 1 }, { left: '0%', opacity: 1, duration, ease: 'power1.out' }, at);
+  tl.to(pen, { opacity: 0, duration: 0.08, ease: 'none' }, at + Math.max(0, duration - 0.02));
+}
+
+function heroPlots(tl, start) {
+  const lines = [...document.querySelectorAll('.room-hero .line')];
+  lines.forEach((line, index) => {
+    const duration = line.closest('.note') ? 0.62 : 0.8;
+    plotInk(line, tl, start + index * 0.12, duration);
+  });
+  if (heroAction) plotInk(heroAction, tl, start + lines.length * 0.12, 0.5);
+}
+
+function plotSection(section) {
+  if (reduced || section.dataset.plotted) return;
+  section.dataset.plotted = '1';
+  const bits = [...section.querySelectorAll('.plate, .note, .action')];
+  const tl = gsap.timeline();
+  bits.forEach((el, index) => {
+    const duration = el.classList.contains('plate') ? 0.74 : 0.55;
+    plotInk(el, tl, index * 0.12, duration);
+  });
+}
+
+function rand(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function playGlint() {
+  if (reduced || document.hidden || !metrics || !glint) return;
+  const rows = [];
+  for (let y = metrics.row; y < window.innerHeight - metrics.row; y += metrics.row) rows.push(snap(y));
+  if (!rows.length) return;
+  const y = rows[Math.floor(Math.random() * rows.length)];
+  glint.style.top = `${y}px`;
+  glint.style.height = `${metrics.line}px`;
+  glint.style.width = `${Math.max(16, metrics.col * 0.34)}px`;
+  glint.style.opacity = '1';
+  gsap.fromTo(
+    glint,
+    { x: window.innerWidth },
+    {
+      x: metrics.originX,
+      duration: 1.5,
+      ease: 'power1.out',
+      overwrite: 'auto',
+      onComplete: () => {
+        glint.style.opacity = '0';
+      },
+    },
+  );
+}
+
+function nudgeCell() {
+  if (reduced || document.hidden || !introDone || !cell || !metrics) return;
+  const homePlate = plate < 0 ? 0 : plate;
+  const box = cellBox(homePlate);
+  const token = nudgeToken;
+  const dir = box.left - metrics.col >= metrics.originX ? -1 : 1;
+  gsap.to(cell, {
+    left: box.left + dir * metrics.col + metrics.line,
+    top: box.top + metrics.line,
+    duration: 0.24,
+    ease: 'power2.out',
+    overwrite: 'auto',
+    onComplete: () => {
+      if (token !== nudgeToken || plate !== homePlate) return;
+      gsap.to(cell, {
+        left: box.left + metrics.line,
+        top: box.top + metrics.line,
+        duration: 0.24,
+        ease: 'power2.out',
+        overwrite: 'auto',
+      });
+    },
+  });
+}
+
+function scheduleGlint() {
+  clearTimeout(glintTimer);
+  glintTimer = window.setTimeout(() => {
+    if (!document.hidden) playGlint();
+    if (ambientOn) scheduleGlint();
+  }, rand(6000, 10000));
+}
+
+function scheduleNudge() {
+  clearTimeout(cellTimer);
+  cellTimer = window.setTimeout(() => {
+    if (!document.hidden) nudgeCell();
+    if (ambientOn) scheduleNudge();
+  }, rand(18000, 28000));
+}
+
+function ambientFrame(now) {
+  if (!ambientOn || document.hidden) return;
+  breath = 1 + 0.016 * Math.sin((now / 14000) * Math.PI * 2);
+  if (now - lastHeadStep >= 4500) {
+    lastHeadStep = now;
+    headDrift = (headDrift + 1) % Math.max(1, headRows.length);
+    headIndex = -1;
+    applyHead(scrollProgress());
+  }
+  applyCircle(scrollProgress());
+  ambientRaf = requestAnimationFrame(ambientFrame);
+}
+
+function startAmbient() {
+  if (reduced || ambientOn) return;
+  ambientOn = true;
+  lastHeadStep = performance.now();
+  scheduleGlint();
+  scheduleNudge();
+  ambientRaf = requestAnimationFrame(ambientFrame);
+}
+
+function pauseAmbient() {
+  ambientOn = false;
+  cancelAnimationFrame(ambientRaf);
+  clearTimeout(glintTimer);
+  clearTimeout(cellTimer);
 }
 
 function playIntro(lines) {
-  const intro = gsap.timeline({ defaults: { ease: 'power2.inOut' } });
-  if (wordmark) {
-    intro.fromTo(wordmark, { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', duration: 0.5 }, 0);
-  }
+  const intro = gsap.timeline();
   intro.fromTo(lines, { opacity: 0 }, { opacity: 1, duration: 0.45, ease: 'power2.out' }, 0);
-
-  const hero = document.querySelector('#entrance');
-  const box = cellBox(0);
-  const crossX = box.left + metrics.col - metrics.originX;
-  drawSectionRule(hero, {
-    timeline: intro,
-    start: 0.4,
-    crossX,
-    tickStart: crossX,
-    tickEnd: Math.min(hero._rule.rule.clientWidth || crossX + 96, crossX + 96),
-  });
-
+  drawMast(intro, 0.35);
   placeCell(0, false);
   intro.fromTo(
     cell,
     { clipPath: 'inset(0 0 100% 100%)' },
     { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.4, ease: 'power2.out' },
-    1.35,
+    1.15,
   );
-
   const grow = { value: 0 };
   intro.to(
     grow,
@@ -408,27 +661,16 @@ function playIntro(lines) {
         applyScroll();
       },
     },
-    0.5,
+    0.45,
   );
-
-  heroLines.forEach((line, index) => {
-    intro.to(line, { y: 0, duration: 0.34, ease: 'power2.out' }, 1.75 + index * 0.14);
-  });
-  if (heroAction) {
-    intro.fromTo(
-      heroAction,
-      { clipPath: 'inset(100% 0 0 0)' },
-      { clipPath: 'inset(0% 0 0 0)', duration: 0.3, ease: 'power2.out' },
-      1.75 + heroLines.length * 0.14,
-    );
-  }
-
+  heroPlots(intro, 0.7);
   intro.eventCallback('onComplete', () => {
     introDone = true;
     reveal = 1;
     plate = plateIndex(window.scrollY);
     placeCell(plate, false);
     applyScroll();
+    if (!document.hidden) startAmbient();
   });
 }
 
@@ -449,9 +691,7 @@ function layout() {
 }
 
 function revealPlacard(section) {
-  const placard = section.querySelector('.placard');
-  if (!placard || reduced) return;
-  gsap.fromTo(placard, { y: 8 }, { y: 0, duration: 0.4, ease: 'power2.out' });
+  plotSection(section);
 }
 
 function boot() {
@@ -471,6 +711,10 @@ function boot() {
     });
   });
   if (!reduced) window.addEventListener('scroll', onScroll, { passive: true });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pauseAmbient();
+    else if (!reduced && introDone) startAmbient();
+  });
   ScrollTrigger.refresh();
 }
 
