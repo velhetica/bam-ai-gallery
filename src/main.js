@@ -10,13 +10,17 @@ const heroLines = document.querySelectorAll('.room-hero .line > span');
 const heroAction = document.querySelector('.room-hero .action');
 const rooms = [...document.querySelectorAll('.room')];
 
-const INK_LINE = 'rgba(233, 226, 210, 0.045)';
-const MAJOR = 'rgba(200, 185, 148, 0.55)';
-
 let metrics = null;
 let cell = null;
-let baseCol = 0;
-let baseRow = 0;
+let shifts = [];
+let headRows = [];
+let accentRows = [];
+let headIndex = -1;
+let baseRow = 2;
+let plate = -1;
+let reveal = 0;
+let introDone = false;
+let scheduled = false;
 
 function gridMetrics() {
   const dpr = window.devicePixelRatio || 1;
@@ -29,6 +33,25 @@ function gridMetrics() {
     row: rowPx / dpr,
     originX: Math.round(mark * dpr) / dpr,
   };
+}
+
+function snap(value) {
+  const dpr = window.devicePixelRatio || 1;
+  return Math.round(value * dpr) / dpr;
+}
+
+function accentThickness() {
+  const dpr = window.devicePixelRatio || 1;
+  const min = Math.ceil(1.5 * dpr);
+  const max = Math.max(min, Math.floor(2 * dpr));
+  let px = Math.round(1.75 * dpr);
+  if (px < min) px = min;
+  if (px > max) px = max;
+  if (px % 2 === 0) {
+    if (px + 1 <= max) px += 1;
+    else if (px - 1 >= min) px -= 1;
+  }
+  return px / dpr;
 }
 
 function paintGrain() {
@@ -66,93 +89,6 @@ function mountSectionRules() {
     section.prepend(rule);
     section._rule = { rule, bar, line, drawn: false };
   });
-}
-
-function cornerOf(step) {
-  return step % 2 === 0 ? 'br' : 'tr';
-}
-
-function hiddenClip(corner) {
-  return corner === 'br' ? 'inset(100% 0 0 100%)' : 'inset(0 0 100% 100%)';
-}
-
-function cellBox(step) {
-  const maxCol = Math.floor((window.innerWidth - metrics.originX - metrics.col) / metrics.col);
-  const col = Math.max(1, Math.min(maxCol, baseCol - step));
-  const row = Math.max(1, baseRow - (step % 2));
-  return {
-    left: metrics.originX + col * metrics.col,
-    top: row * metrics.row,
-    corner: cornerOf(step),
-  };
-}
-
-function placeCell(step, animate) {
-  if (!cell || !metrics) return;
-  const box = cellBox(step);
-  cell.style.left = `${box.left + metrics.line}px`;
-  cell.style.top = `${box.top + metrics.line}px`;
-  cell.style.width = `${metrics.col - metrics.line}px`;
-  cell.style.height = `${metrics.row - metrics.line}px`;
-  if (!animate || reduced) {
-    cell.style.clipPath = 'inset(0% 0% 0% 0%)';
-    return;
-  }
-  gsap.fromTo(
-    cell,
-    { clipPath: hiddenClip(box.corner) },
-    { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.38, ease: 'power2.out' },
-  );
-}
-
-function buildLedger() {
-  metrics = gridMetrics();
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  ledger.replaceChildren();
-  const lines = [];
-
-  const addCol = (x) => {
-    const line = document.createElement('div');
-    line.className = 'ledger-line is-col';
-    line.style.background = INK_LINE;
-    line.style.left = `${x}px`;
-    line.style.top = '0';
-    line.style.width = `${metrics.line}px`;
-    line.style.height = `${height}px`;
-    lines.push(line);
-  };
-  const addRow = (y) => {
-    const line = document.createElement('div');
-    line.className = 'ledger-line is-row';
-    line.style.background = INK_LINE;
-    line.style.left = '0';
-    line.style.top = `${y}px`;
-    line.style.width = `${width}px`;
-    line.style.height = `${metrics.line}px`;
-    lines.push(line);
-  };
-
-  for (let x = metrics.originX; x < width + 1; x += metrics.col) addCol(x);
-  for (let x = metrics.originX - metrics.col; x > -metrics.col; x -= metrics.col) addCol(x);
-  for (let y = 0; y < height + 1; y += metrics.row) addRow(y);
-
-  cell = document.createElement('div');
-  cell.className = 'ledger-cell';
-  ledger.append(...lines, cell);
-
-  const markBottom = (wordmark?.getBoundingClientRect().bottom || 48) + 20;
-  const headline = document.querySelector('.room-hero h1')?.getBoundingClientRect();
-  baseRow = Math.max(2, Math.ceil(markBottom / metrics.row));
-  let left = width * (width < 760 ? 0.5 : 0.62);
-  if (headline && headline.top < height * 0.72) left = Math.max(left, headline.right + metrics.col);
-  const maxCol = Math.floor((width - metrics.originX - metrics.col) / metrics.col);
-  baseCol = Math.max(1, Math.min(maxCol, Math.ceil((left - metrics.originX) / metrics.col)));
-
-  const heroRule = document.querySelector('#entrance .section-rule');
-  if (heroRule) heroRule.style.top = `${baseRow * metrics.row}px`;
-  placeCell(0, false);
-  return lines;
 }
 
 function arm(parent, x, y, w, h) {
@@ -216,6 +152,212 @@ function drawSectionRule(section, options = {}) {
   tl.fromTo(cross, { opacity: 0 }, { opacity: 1, duration: 0.08, ease: 'power2.out' }, start + snapAt);
 }
 
+function lineEl(className, x, y, w, h) {
+  const line = document.createElement('div');
+  line.className = className;
+  line.style.left = `${x}px`;
+  line.style.top = `${y}px`;
+  line.style.width = `${w}px`;
+  line.style.height = `${h}px`;
+  return line;
+}
+
+function cellBox(step) {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const maxCol = Math.max(0, Math.floor((width - metrics.originX - metrics.col) / metrics.col));
+  const maxRow = Math.max(1, Math.floor((height - metrics.row) / metrics.row));
+  const textRight = width < 800 ? width * 0.55 : Math.min(width * 0.46, 720);
+  let minCol = Math.ceil((textRight - metrics.originX) / metrics.col);
+  if (minCol > maxCol) minCol = maxCol;
+  const startCol = Math.max(minCol, maxCol - (maxCol > minCol + 1 ? 1 : 0));
+  const startRow = Math.min(maxRow - 1, Math.max(1, baseRow));
+  const steps = [
+    [0, 0],
+    [-1, 0],
+    [0, 1],
+    [-1, 0],
+    [0, 1],
+    [-1, 0],
+  ];
+  let col = startCol;
+  let row = startRow;
+  const count = Math.max(0, Math.min(step, steps.length - 1));
+  for (let i = 1; i <= count; i += 1) {
+    const [dx, dy] = steps[i];
+    const nextCol = Math.max(minCol, Math.min(maxCol, col + dx));
+    const nextRow = Math.max(1, Math.min(maxRow, row + dy));
+    if (nextCol === col && nextRow === row) {
+      if (dx !== 0) row = Math.min(maxRow, row + 1);
+      else col = Math.max(minCol, col - 1);
+    } else {
+      col = nextCol;
+      row = nextRow;
+    }
+  }
+  return {
+    left: metrics.originX + col * metrics.col,
+    top: row * metrics.row,
+  };
+}
+
+function placeCell(step, animate) {
+  if (!cell || !metrics) return;
+  const box = cellBox(step);
+  const left = box.left + metrics.line;
+  const top = box.top + metrics.line;
+  cell.style.width = `${metrics.col - metrics.line}px`;
+  cell.style.height = `${metrics.row - metrics.line}px`;
+  if (!animate || reduced) {
+    gsap.set(cell, { left, top });
+    if (introDone || reduced) cell.style.clipPath = 'inset(0% 0% 0% 0%)';
+    return;
+  }
+  gsap.to(cell, { left, top, duration: 0.5, ease: 'power2.inOut', overwrite: 'auto' });
+}
+
+function build() {
+  metrics = gridMetrics();
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const thick = accentThickness();
+  const xs = [];
+  const ys = [];
+  for (let x = metrics.originX; x <= width + metrics.col; x += metrics.col) xs.push(snap(x));
+  for (let x = metrics.originX - metrics.col; x >= -metrics.col * 2; x -= metrics.col) xs.push(snap(x));
+  for (let y = 0; y <= height; y += metrics.row) ys.push(snap(y));
+  ys.push(snap(-metrics.row));
+
+  const base = document.createElement('div');
+  base.className = 'ledger-shift';
+  const accentShift = document.createElement('div');
+  accentShift.className = 'ledger-shift';
+  const accent = document.createElement('div');
+  accent.className = 'ledger-accent';
+  accent.append(accentShift);
+  const float = document.createElement('div');
+  float.className = 'ledger-float';
+  cell = document.createElement('div');
+  cell.className = 'ledger-cell';
+  float.append(cell);
+
+  const baseLines = [];
+  headRows = [];
+  accentRows = [];
+  const colSpan = height + metrics.row * 2;
+  const rowSpan = width + metrics.col * 2;
+
+  xs.forEach((x) => {
+    const col = lineEl('ledger-line is-col', x, -metrics.row, metrics.line, colSpan);
+    base.append(col);
+    baseLines.push(col);
+    const ax = snap(x + (metrics.line - thick) / 2);
+    accentShift.append(lineEl('ledger-line is-col', ax, -metrics.row, thick, colSpan));
+  });
+  ys.forEach((y) => {
+    const row = lineEl('ledger-line is-row', -metrics.col, y, rowSpan, metrics.line);
+    base.append(row);
+    baseLines.push(row);
+    const ay = snap(y + (metrics.line - thick) / 2);
+    const accentRow = lineEl('ledger-line is-row', -metrics.col, ay, rowSpan, thick);
+    accentShift.append(accentRow);
+    if (y >= metrics.row && y <= height - metrics.row) {
+      headRows.push(row);
+      accentRows.push(accentRow);
+    }
+  });
+
+  ledger.replaceChildren(base, accent, float);
+  shifts = [base, accentShift, float];
+  headIndex = -1;
+
+  const markBottom = (wordmark?.getBoundingClientRect().bottom || 48) + 12;
+  baseRow = Math.max(1, Math.ceil(markBottom / metrics.row));
+  const heroRule = document.querySelector('#entrance .section-rule');
+  if (heroRule) heroRule.style.top = `${baseRow * metrics.row}px`;
+  placeCell(introDone ? plateIndex(window.scrollY) : 0, false);
+  return baseLines;
+}
+
+function circleTarget(progress) {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const swing = Math.sin(Math.PI * progress);
+  return {
+    x: w + Math.min(w * 0.08, 120) - swing * w * 0.16,
+    y: -h * 0.16 + progress * h * 1.34,
+    radius: h * (0.74 + 0.14 * swing),
+  };
+}
+
+function applyCircle(progress) {
+  const accent = ledger.querySelector('.ledger-accent');
+  if (!accent) return;
+  const target = circleTarget(progress);
+  accent.style.setProperty('--mask-x', `${target.x}px`);
+  accent.style.setProperty('--mask-y', `${target.y}px`);
+  accent.style.setProperty('--mask-r', `${target.radius * reveal}px`);
+}
+
+function applyHead(progress) {
+  const count = headRows.length;
+  if (!count) return;
+  const index = Math.min(count - 1, Math.max(0, Math.round(progress * (count - 1))));
+  if (index === headIndex) return;
+  if (headIndex >= 0) {
+    headRows[headIndex]?.classList.remove('is-head');
+    accentRows[headIndex]?.classList.remove('is-head');
+  }
+  headIndex = index;
+  headRows[index]?.classList.add('is-head');
+  accentRows[index]?.classList.add('is-head');
+}
+
+function applyShift(scrollY) {
+  const raw = reduced ? 0 : Math.sin((scrollY / window.innerHeight) * Math.PI) * metrics.col;
+  const x = Math.abs(raw) < 0.4 ? 0 : raw;
+  const value = x === 0 ? 'none' : `translate3d(${x}px, 0, 0)`;
+  shifts.forEach((layer) => {
+    layer.style.transform = value;
+  });
+}
+
+function scrollProgress() {
+  const max = document.documentElement.scrollHeight - window.innerHeight;
+  if (max <= 0) return 0;
+  return Math.min(1, Math.max(0, window.scrollY / max));
+}
+
+function plateIndex(scrollY) {
+  const mark = window.innerHeight * 0.72;
+  let current = 0;
+  rooms.forEach((section, index) => {
+    if (scrollY >= section.offsetTop - mark) current = index;
+  });
+  return current;
+}
+
+function applyScroll() {
+  const progress = scrollProgress();
+  applyCircle(progress);
+  applyHead(progress);
+  applyShift(window.scrollY);
+  if (!introDone) return;
+  const next = plateIndex(window.scrollY);
+  if (next === plate) return;
+  plate = next;
+  placeCell(plate, !reduced);
+}
+
+function onScroll() {
+  if (scheduled) return;
+  scheduled = true;
+  requestAnimationFrame(() => {
+    scheduled = false;
+    applyScroll();
+  });
+}
+
 function showType() {
   if (wordmark) wordmark.style.clipPath = 'none';
   heroLines.forEach((line) => {
@@ -236,8 +378,8 @@ function playIntro(lines) {
   intro.fromTo(lines, { opacity: 0 }, { opacity: 1, duration: 0.45, ease: 'power2.out' }, 0);
 
   const hero = document.querySelector('#entrance');
-  const cellRight = metrics.originX + (baseCol + 1) * metrics.col;
-  const crossX = cellRight - metrics.originX;
+  const box = cellBox(0);
+  const crossX = box.left + metrics.col - metrics.originX;
   drawSectionRule(hero, {
     timeline: intro,
     start: 0.4,
@@ -246,12 +388,29 @@ function playIntro(lines) {
     tickEnd: Math.min(hero._rule.rule.clientWidth || crossX + 96, crossX + 96),
   });
 
+  placeCell(0, false);
   intro.fromTo(
     cell,
-    { clipPath: hiddenClip('br') },
-    { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.36, ease: 'power2.out' },
+    { clipPath: 'inset(0 0 100% 100%)' },
+    { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.4, ease: 'power2.out' },
     1.35,
   );
+
+  const grow = { value: 0 };
+  intro.to(
+    grow,
+    {
+      value: 1,
+      duration: 1.2,
+      ease: 'power2.inOut',
+      onUpdate: () => {
+        reveal = grow.value;
+        applyScroll();
+      },
+    },
+    0.5,
+  );
+
   heroLines.forEach((line, index) => {
     intro.to(line, { y: 0, duration: 0.34, ease: 'power2.out' }, 1.75 + index * 0.14);
   });
@@ -263,13 +422,27 @@ function playIntro(lines) {
       1.75 + heroLines.length * 0.14,
     );
   }
+
+  intro.eventCallback('onComplete', () => {
+    introDone = true;
+    reveal = 1;
+    plate = plateIndex(window.scrollY);
+    placeCell(plate, false);
+    applyScroll();
+  });
 }
 
 function layout() {
-  const lines = buildLedger();
+  const lines = build();
+  applyScroll();
   if (reduced) {
+    reveal = 1;
+    introDone = true;
     showType();
     rooms.forEach((section) => drawSectionRule(section, { immediate: true }));
+    plate = plateIndex(window.scrollY);
+    placeCell(plate, false);
+    applyScroll();
     return;
   }
   playIntro(lines);
@@ -279,13 +452,6 @@ function revealPlacard(section) {
   const placard = section.querySelector('.placard');
   if (!placard || reduced) return;
   gsap.fromTo(placard, { y: 8 }, { y: 0, duration: 0.4, ease: 'power2.out' });
-}
-
-function enterPlate(section) {
-  const index = Number(section.dataset.room) || 0;
-  placeCell(index, true);
-  drawSectionRule(section);
-  revealPlacard(section);
 }
 
 function boot() {
@@ -298,9 +464,13 @@ function boot() {
       trigger: section,
       start: 'top 72%',
       once: true,
-      onEnter: () => enterPlate(section),
+      onEnter: () => {
+        drawSectionRule(section);
+        revealPlacard(section);
+      },
     });
   });
+  if (!reduced) window.addEventListener('scroll', onScroll, { passive: true });
   ScrollTrigger.refresh();
 }
 
@@ -308,6 +478,18 @@ if (document.fonts?.ready) document.fonts.ready.then(boot);
 else boot();
 
 window.addEventListener('resize', () => {
-  if (reduced) layout();
+  const lines = build();
+  if (reduced || introDone) {
+    reveal = 1;
+    showType();
+    plate = plateIndex(window.scrollY);
+    placeCell(plate, false);
+    applyScroll();
+  } else {
+    lines.forEach((line) => {
+      line.style.opacity = '0';
+    });
+    applyScroll();
+  }
   ScrollTrigger.refresh();
 });
