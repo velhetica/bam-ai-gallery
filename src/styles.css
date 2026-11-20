@@ -103,6 +103,15 @@ body {
   pointer-events: none;
 }
 
+.pixel-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background-repeat: repeat;
+  image-rendering: pixelated;
+}
+
 .mast {
   position: fixed;
   top: 0;

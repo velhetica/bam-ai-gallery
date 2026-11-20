@@ -6,6 +6,34 @@ import { createExhibition } from './exhibition.js';
 
 gsap.registerPlugin(ScrollTrigger);
 
+const pixelGrid = document.querySelector('.pixel-grid');
+
+function alignPixelGrid() {
+  if (!pixelGrid) return;
+  const dpr = window.devicePixelRatio || 1;
+  const modulePx = Math.max(1, Math.round(64 * dpr));
+  const canvas = document.createElement('canvas');
+  canvas.width = modulePx;
+  canvas.height = modulePx;
+  const context = canvas.getContext('2d');
+  context.clearRect(0, 0, modulePx, modulePx);
+  context.strokeStyle = 'rgba(233, 226, 210, 0.045)';
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(0.5, 0);
+  context.lineTo(0.5, modulePx);
+  context.moveTo(0, 0.5);
+  context.lineTo(modulePx, 0.5);
+  context.stroke();
+  const wordmark = document.querySelector('.wordmark');
+  const origin = wordmark ? wordmark.getBoundingClientRect().left : 0;
+  const snapped = Math.round(origin * dpr) / dpr;
+  const moduleCss = modulePx / dpr;
+  pixelGrid.style.backgroundImage = `url(${canvas.toDataURL()})`;
+  pixelGrid.style.backgroundSize = `${moduleCss}px ${moduleCss}px`;
+  pixelGrid.style.backgroundPosition = `${snapped}px 0px`;
+}
+
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const compact = window.matchMedia('(max-width: 759px)').matches;
 const canvas = document.querySelector('#installation');
@@ -63,8 +91,11 @@ gsap.ticker.add((time) => {
 });
 gsap.ticker.lagSmoothing(0);
 
+alignPixelGrid();
+
 window.addEventListener('resize', () => {
   exhibition.resize();
+  alignPixelGrid();
   ScrollTrigger.refresh();
 });
 

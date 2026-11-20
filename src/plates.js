@@ -6,7 +6,6 @@
  */
 
 const CREAM = 0xe9e2d2;
-const SMOKE = 0xc8b994;
 const BRIGHT = 0xe1d3af;
 
 function stroke(points, opts) {
@@ -25,6 +24,10 @@ function stroke(points, opts) {
 
 function line(x1, y1, x2, y2, z, opts) {
   return stroke([x1, y1, z, x2, y2, z], opts);
+}
+
+function seg(x1, y1, z1, x2, y2, z2, opts) {
+  return stroke([x1, y1, z1, x2, y2, z2], opts);
 }
 
 function arc(cx, cy, z, r, a0, a1, opts) {
@@ -74,84 +77,194 @@ export function createStrokes(compact) {
     items.forEach(push);
   };
 
-  // Persistent architecture — three depth layers that never leave the room.
-  // Background.
-  push(line(2.45, 2.28, 8.5, 2.28, -13, { room: 'persist', opening: true, width: 0.75 }));
-  push(line(7.65, -2.55, 7.65, 2.6, -13, { room: 'persist', opening: true, width: 0.75 }));
+  // Persistent architecture for the later plates. Hidden on the hero.
+  push(line(2.45, 2.28, 8.5, 2.28, -13, { room: 'persist', width: 0.75 }));
+  push(line(7.65, -2.55, 7.65, 2.6, -13, { room: 'persist', width: 0.75 }));
   push(
     arc(6.7, 1.35, -12.4, 1.85, -0.15, 0.82, {
       room: 'persist',
-      opening: true,
       width: 0.7,
       fine: true,
     }),
   );
+  push(line(2.3, -1.78, 7.9, -1.78, -4.4, { room: 'persist', width: 0.9 }));
+  push(line(6.9, -2.15, 6.9, 2.2, -3.5, { room: 'persist', width: 0.9 }));
+  push(line(2.15, 2.42, 6.55, 2.42, -1.6, { room: 'persist', width: 0.8 }));
+  push(line(5.45, 0.15, 5.45, 2.2, 3.55, { room: 'persist', width: 1.2 }));
+  push(line(4.65, 1.62, 6.55, 1.62, 3.95, { room: 'persist', width: 1.05 }));
 
-  // Midground frame, behind the plates.
-  push(line(2.3, -1.78, 7.9, -1.78, -4.4, { room: 'persist', opening: true, width: 0.9 }));
-  push(line(6.9, -2.15, 6.9, 2.2, -3.5, { room: 'persist', opening: true, width: 0.9 }));
-  push(line(2.15, 2.42, 6.55, 2.42, -1.6, { room: 'persist', opening: true, width: 0.8 }));
+  // Hero. One wafer, grazing: grid in the XZ plane, true rim, one inlay.
+  const cx = 6.15;
+  const cz = -0.55;
+  const radius = 4.55;
+  const yPlane = 0;
+  const xMin = 3.35;
+  const cell = compact ? 2.15 : 1.48;
 
-  // Plate: entrance. Meridian, datum, arcs, a routed stage, a needle.
-  push(line(2.05, 0.06, 6.2, 0.06, 0.08, { room: 0, opening: true, width: 1.15 }));
-  push(line(3.18, -1.42, 3.18, 2.08, 0.0, { room: 0, opening: true, width: 1.05 }));
+  const chord = (fixed, axis) => {
+    const delta = axis === 'z' ? fixed - cz : fixed - cx;
+    const reach = radius * radius - delta * delta;
+    if (reach <= 0.04) return null;
+    const half = Math.sqrt(reach);
+    if (axis === 'z') {
+      const x0 = Math.max(cx - half, xMin);
+      const x1 = cx + half;
+      if (x1 - x0 < 0.7) return null;
+      return [x0, x1];
+    }
+    const z0 = cz - half;
+    const z1 = cz + half;
+    if (z1 - z0 < 0.7) return null;
+    return [z0, z1];
+  };
 
-  const arcCenter = [4.42, 0.98, 0.24];
+  const zStops = [];
+  for (let z = cz - radius + cell * 0.5; z <= cz + radius - 0.2; z += cell) zStops.push(z);
+  zStops.sort((a, b) => a - b);
+  zStops.forEach((z, index) => {
+    const span = chord(z, 'z');
+    if (!span) return;
+    const near = (z - (cz - radius)) / (radius * 2);
+    push(
+      seg(span[0], yPlane, z, span[1], yPlane, z, {
+        room: 0,
+        opening: true,
+        at: 0.28 + index * 0.13,
+        dur: 1.05,
+        width: 0.7 + near * 0.28,
+        opacity: 0.28 + near * 0.5,
+        fine: compact ? false : index % 2 === 1 && near < 0.45,
+      }),
+    );
+  });
+
+  const xStops = [];
+  for (let x = Math.max(cx - radius, xMin) + cell * 0.35; x <= cx + radius - 0.15; x += cell) {
+    xStops.push(x);
+  }
+  xStops.forEach((x, index) => {
+    const span = chord(x, 'x');
+    if (!span) return;
+    const near = (x - cx) / radius;
+    const lateral = Math.min(1, Math.max(0, (near + 1) / 2));
+    push(
+      seg(x, yPlane + 0.004, span[0], x, yPlane + 0.004, span[1], {
+        room: 0,
+        opening: true,
+        at: 0.42 + index * 0.13,
+        dur: 1.2,
+        width: 0.68 + lateral * 0.22,
+        opacity: 0.24 + lateral * 0.42,
+      }),
+    );
+  });
+
+  const rim = (r, y, a0, a1) => {
+    const steps = Math.max(24, Math.ceil(Math.abs(a1 - a0) / (Math.PI / 72)));
+    const points = [];
+    for (let i = 0; i <= steps; i += 1) {
+      const a = a0 + ((a1 - a0) * i) / steps;
+      points.push(cx + Math.cos(a) * r, y, cz + Math.sin(a) * r);
+    }
+    return points;
+  };
+
+  const rimStart = 2.22;
+  const rimEnd = -0.22;
   push(
-    arc(0, 0, 0, 1.88, -0.32, 1.18, {
+    stroke(rim(radius, 0.012, rimStart, rimEnd), {
       room: 0,
       opening: true,
-      width: 1,
-      rig: 'arc',
-      rigPosition: arcCenter,
+      at: 2.55,
+      dur: 1.85,
+      width: 1.05,
+      opacity: 0.9,
     }),
   );
+
+  const tickCount = compact ? 7 : 13;
+  for (let i = 0; i <= tickCount; i += 1) {
+    const a = rimStart + ((rimEnd - rimStart) * i) / tickCount;
+    const major = i % 3 === 0;
+    if (compact && !major) continue;
+    const px = cx + Math.cos(a) * radius;
+    const pz = cz + Math.sin(a) * radius;
+    const len = major ? 0.34 : 0.16;
+    push(
+      seg(px, 0.012, pz, px, 0.012 + len, pz, {
+        room: 0,
+        opening: true,
+        at: 4.15 + i * 0.07,
+        dur: 0.32,
+        width: major ? 1.05 : 0.8,
+        opacity: major ? 0.92 : 0.62,
+        fine: !major,
+      }),
+    );
+  }
+
+  const traceY = 0.02;
+  const squareX = 7.22;
+  const squareZ = 0.95;
+  const half = 0.2;
+  const route = [
+    [4.55, -2.35, 4.55, -0.85],
+    [4.55, -0.85, 5.85, -0.85],
+    [5.85, -0.85, 5.85, squareZ],
+    [5.85, squareZ, squareX - half, squareZ],
+  ];
+  route.forEach(([x1, z1, x2, z2], index) => {
+    push(
+      seg(x1, traceY, z1, x2, traceY, z2, {
+        room: 0,
+        opening: true,
+        at: 5.15 + index * 0.38,
+        dur: 0.72,
+        width: 1.05,
+        opacity: 0.88,
+      }),
+    );
+  });
   push(
-    arc(0, 0, 0, 1.4, -0.32, 1.18, {
+    seg(squareX, traceY, squareZ + 2.15, squareX, traceY, squareZ + half, {
       room: 0,
       opening: true,
-      width: 1.35,
-      color: SMOKE,
-      rig: 'arc',
-      rigPosition: arcCenter,
+      at: 6.55,
+      dur: 0.7,
+      width: 1.05,
+      opacity: 0.88,
     }),
   );
-  push(
-    arc(0, 0, 0, 0.92, -0.18, 1.02, {
-      room: 0,
-      opening: true,
-      width: 0.9,
-      fine: true,
-      rig: 'arc',
-      rigPosition: arcCenter,
-    }),
-  );
 
-  push(line(5.05, -1.28, 6.45, -1.28, -0.28, { room: 0, opening: true, width: 1.05, color: SMOKE }));
-  push(line(6.45, -1.28, 6.45, 0.22, -0.28, { room: 0, opening: true, width: 1.05, color: SMOKE }));
-  push(line(6.45, 0.22, 7.05, 0.22, -0.28, { room: 0, opening: true, width: 1.05, color: SMOKE }));
-
-  const divisions = compact ? 8 : 16;
-  many(
-    ticks(2.05, 0.06, 6.2, 0.06, 0.16, divisions, 0.1, 0.24, {
-      room: 0,
-      opening: true,
-      width: 0.85,
-    }),
-  );
-
-  // Foreground fragments arrive late, closest to the lens.
-  push(line(5.45, 0.15, 5.45, 2.2, 3.55, { room: 'persist', opening: true, width: 1.2 }));
-  push(line(4.65, 1.62, 6.55, 1.62, 3.95, { room: 'persist', opening: true, width: 1.05 }));
+  const square = [
+    [squareX - half, squareZ - half, squareX + half, squareZ - half],
+    [squareX + half, squareZ - half, squareX + half, squareZ + half],
+    [squareX + half, squareZ + half, squareX - half, squareZ + half],
+    [squareX - half, squareZ + half, squareX - half, squareZ - half],
+  ];
+  square.forEach(([x1, z1, x2, z2], index) => {
+    push(
+      seg(x1, 0.03, z1, x2, 0.03, z2, {
+        room: 0,
+        opening: true,
+        at: 7.15 + index * 0.1,
+        dur: 0.42,
+        width: 1.25,
+        color: BRIGHT,
+        opacity: 1,
+      }),
+    );
+  });
 
   push(
-    stroke([0, 0, 0, 0, 1.08, 0], {
+    stroke(rim(radius + 0.045, 0.028, rimStart, rimEnd), {
       room: 0,
       opening: true,
-      width: 1.55,
+      at: 7.55,
+      dur: 1.9,
+      width: 1.65,
       color: BRIGHT,
-      rig: 'needle',
-      rigPosition: [3.18, 0.06, 0.48],
+      opacity: 1,
     }),
   );
 

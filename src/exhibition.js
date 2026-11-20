@@ -12,7 +12,7 @@ const INK = 0x080807;
 // while the camera dollies. Parallax comes from depth, not from yawing
 // the plate across the type.
 const CAMERA_KEYS = [
-  { x: 0.55, y: 0.12, z: 9.15, lx: 3.45, ly: 0.12 },
+  { x: 1.15, y: 1.48, z: 7.85, lx: 6.05, ly: -0.04 },
   { x: 1.25, y: 0.12, z: 7.6, lx: 4.15, ly: 0.12 },
   { x: 0.15, y: 0.12, z: 8.85, lx: 3.05, ly: 0.12 },
   { x: 1.4, y: 0.12, z: 10.5, lx: 4.3, ly: 0.12 },
@@ -61,6 +61,7 @@ function scheduleOpening(strokes) {
   let cursor = 0.35;
   strokes.forEach((stroke) => {
     if (!stroke.opening) return;
+    if (Number.isFinite(stroke.at) && Number.isFinite(stroke.dur)) return;
     const len = lengthOf(stroke.points);
     const tick = len < 0.55;
     const duration = tick ? 0.32 : Math.min(1.55, 0.48 + len * 0.14);
@@ -68,7 +69,12 @@ function scheduleOpening(strokes) {
     stroke.dur = duration;
     cursor += tick ? 0.042 : Math.max(0.16, duration * 0.4);
   });
-  return cursor;
+  let end = cursor;
+  strokes.forEach((stroke) => {
+    if (!stroke.opening || !Number.isFinite(stroke.at)) return;
+    end = Math.max(end, stroke.at + stroke.dur);
+  });
+  return end;
 }
 
 function sequenced(order, count, presence) {
@@ -136,16 +142,9 @@ export function createExhibition(canvas, { reduced, compact }) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(compact ? 34 : 32, 1, 0.1, 80);
   const rig = new THREE.Group();
-  const arcRig = new THREE.Group();
-  const needleRig = new THREE.Group();
+  const heroRig = new THREE.Group();
   scene.add(rig);
-  rig.add(arcRig);
-  rig.add(needleRig);
-
-  const motion = {
-    arc: reduced ? 0 : -0.22,
-    needle: reduced ? 0 : -0.52,
-  };
+  scene.add(heroRig);
 
   const view = { px: 0, py: 0, pz: 9, lx: 3.4, ly: 0.12 };
   let roomFloat = 0;
@@ -155,16 +154,20 @@ export function createExhibition(canvas, { reduced, compact }) {
   const built = [];
   const materials = new Map();
 
-  function materialFor(color, cssWidth) {
-    const key = `${color}:${cssWidth}`;
+  function materialFor(color, cssWidth, opacity = 1) {
+    const key = `${color}:${cssWidth}:${opacity}`;
     let material = materials.get(key);
     if (!material) {
+      const faded = opacity < 0.999;
       material = new LineMaterial({
         color,
         linewidth: cssWidth * pixelRatio,
         worldUnits: false,
         dashed: false,
-        alphaToCoverage: true,
+        alphaToCoverage: !faded,
+        transparent: faded,
+        opacity,
+        depthWrite: !faded,
         toneMapped: false,
       });
       material.userData.cssWidth = cssWidth;
@@ -177,10 +180,14 @@ export function createExhibition(canvas, { reduced, compact }) {
     if (isCompact) {
       rig.position.set(1.7, 0.72, 0);
       rig.scale.setScalar(0.42);
+      heroRig.position.set(-1.05, 0.5, 0);
+      heroRig.scale.setScalar(0.84);
       camera.fov = 30;
     } else {
       rig.position.set(0.15, 0.02, 0);
       rig.scale.setScalar(1);
+      heroRig.position.set(1.15, -1.15, 0);
+      heroRig.scale.setScalar(1);
       camera.fov = 32;
     }
     camera.updateProjectionMatrix();
@@ -198,11 +205,14 @@ export function createExhibition(canvas, { reduced, compact }) {
 
   function drawAmount(entry) {
     if (reduced) {
-      if (entry.stroke.room === 'persist') return 1;
+      if (entry.stroke.room === 'persist') return roomFloat > 0.4 ? 1 : 0;
       return presenceFor(entry.stroke.room, roomFloat) > 0.5 ? 1 : 0;
     }
 
-    if (entry.stroke.room === 'persist') return entry.stroke.intro;
+    if (entry.stroke.room === 'persist') {
+      const reveal = Math.min(1, Math.max(0, (roomFloat - 0.12) / 0.55));
+      return entry.stroke.intro * reveal;
+    }
 
     const presence = presenceFor(entry.stroke.room, roomFloat);
     const scrolled = sequenced(entry.stroke.order, entry.stroke.count, presence);
@@ -244,36 +254,22 @@ export function createExhibition(canvas, { reduced, compact }) {
       seen[stroke.room] = order + 1;
     });
 
-    const openingEnd = scheduleOpening(strokes);
-    let arcPlaced = false;
-    let needlePlaced = false;
+    scheduleOpening(strokes);
 
     strokes.forEach((stroke) => {
-      const points = densify(stroke.points, 0.05);
+      const points = densify(stroke.points, stroke.room === 0 ? 0.08 : 0.05);
       if (points.length < 6) return;
       const geometry = new LineGeometry();
       geometry.setPositions(points);
       const maxCount = geometry.instanceCount;
-      const mesh = new Line2(geometry, materialFor(stroke.color, stroke.width));
+      const mesh = new Line2(
+        geometry,
+        materialFor(stroke.color, stroke.width, stroke.opacity ?? 1),
+      );
       mesh.frustumCulled = false;
       mesh.visible = false;
-
-      if (stroke.rig === 'arc' && stroke.rigPosition) {
-        if (!arcPlaced) {
-          arcRig.position.set(stroke.rigPosition[0], stroke.rigPosition[1], stroke.rigPosition[2]);
-          arcPlaced = true;
-        }
-        arcRig.add(mesh);
-      } else if (stroke.rig === 'needle' && stroke.rigPosition) {
-        if (!needlePlaced) {
-          needleRig.position.set(stroke.rigPosition[0], stroke.rigPosition[1], stroke.rigPosition[2]);
-          needlePlaced = true;
-        }
-        needleRig.add(mesh);
-      } else {
-        rig.add(mesh);
-      }
-
+      if (stroke.room === 0) heroRig.add(mesh);
+      else rig.add(mesh);
       built.push({ stroke, mesh, maxCount });
     });
 
@@ -293,11 +289,6 @@ export function createExhibition(canvas, { reduced, compact }) {
           stroke.at,
         );
       });
-      const sweepAt = Math.max(0.8, openingEnd - 0.35);
-      timeline.to(motion, { arc: 0.07, duration: 2.05, ease: 'sine.inOut' }, sweepAt);
-      timeline.to(motion, { arc: 0, duration: 2.35, ease: 'power3.inOut' }, sweepAt + 2.05);
-      timeline.to(motion, { needle: 0.2, duration: 1.85, ease: 'sine.inOut' }, sweepAt + 0.15);
-      timeline.to(motion, { needle: 0, duration: 2.25, ease: 'power3.inOut' }, sweepAt + 2.0);
     }
   }
 
@@ -325,8 +316,6 @@ export function createExhibition(canvas, { reduced, compact }) {
     sampleCamera(roomFloat, view, isCompact);
     camera.position.set(view.px, view.py, view.pz);
     camera.lookAt(view.lx, view.ly, 0);
-    arcRig.rotation.z = motion.arc;
-    needleRig.rotation.z = motion.needle;
     built.forEach(applyDraw);
     renderer.render(scene, camera);
   }
