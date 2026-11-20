@@ -574,6 +574,7 @@ h1 {
 .story-industry {
   padding-top: calc(var(--mast, 88px) + 1.75rem);
   padding-bottom: 2rem;
+  background: #080807;
 }
 
 .story-industry .story-title {
@@ -748,14 +749,19 @@ body.is-works .ledger-accent {
   max-width: 40rem;
   margin: 1.75rem 0 0;
   padding: 0;
-  background: transparent;
+  border: 0;
+  background: none;
   color: #aba393;
   font-size: 12px;
   line-height: 1.5;
 }
 
 .sources summary {
-  width: fit-content;
+  display: inline;
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: none;
   color: #aba393;
   font-family: var(--sans);
   font-size: 12px;
@@ -798,7 +804,7 @@ body.is-works .ledger-accent {
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(34vw, 46vw);
+  grid-template-columns: minmax(0, 32rem) minmax(0, 1fr);
   align-items: stretch;
   min-height: 100vh;
   padding-top: calc(var(--mast, 88px) + 2.75rem);
@@ -813,8 +819,8 @@ body.is-works .ledger-accent {
   z-index: 2;
   grid-column: 1;
   width: auto;
-  max-width: 36rem;
-  padding-right: 1.75rem;
+  max-width: 32rem;
+  padding-right: 3rem;
 }
 
 .steps {
@@ -895,20 +901,20 @@ body.is-works .ledger-accent {
   position: absolute;
   z-index: 1;
   top: 0;
-  right: -14vw;
+  right: -20vw;
   bottom: 0;
-  width: 72vw;
+  width: 62vw;
   margin: 0;
   background: transparent;
   pointer-events: none;
   mix-blend-mode: lighten;
   -webkit-mask-image:
-    linear-gradient(to right, transparent 0%, #000 26%),
-    linear-gradient(to top, transparent 0%, #000 18%);
+    linear-gradient(to right, transparent 0%, #000 46%),
+    linear-gradient(to top, transparent 0%, #000 20%);
   -webkit-mask-composite: source-in;
   mask-image:
-    linear-gradient(to right, transparent 0%, #000 26%),
-    linear-gradient(to top, transparent 0%, #000 18%);
+    linear-gradient(to right, transparent 0%, #000 46%),
+    linear-gradient(to top, transparent 0%, #000 20%);
   mask-composite: intersect;
 }
 
@@ -921,6 +927,7 @@ body.is-works .ledger-accent {
   object-position: right center;
   border-radius: 0;
   background: transparent;
+  filter: brightness(0.85);
 }
 
 @media (max-width: 767px) {
@@ -992,8 +999,10 @@ body.is-works .ledger-accent {
     width: 100vw;
     height: auto;
     margin: 3rem 0 0 calc(50% - 50vw);
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 84%, transparent 100%);
-    mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 84%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 58%, transparent 100%);
+    -webkit-mask-composite: source-over;
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 58%, transparent 100%);
+    mask-composite: add;
   }
 
   .works-photo picture,
@@ -1001,6 +1010,7 @@ body.is-works .ledger-accent {
     width: 100%;
     height: auto;
     object-fit: contain;
+    filter: brightness(0.85);
   }
 }
 
