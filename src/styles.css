@@ -103,56 +103,56 @@ body {
   pointer-events: none;
 }
 
-.pixel-grid {
+.ledger {
   position: fixed;
   inset: 0;
-  z-index: 4;
-  pointer-events: none;
-  background-repeat: repeat;
-  image-rendering: pixelated;
-  opacity: 0;
-}
-
-.sheet {
-  position: fixed;
-  inset: 0;
-  z-index: 5;
+  z-index: 2;
   pointer-events: none;
 }
 
-.sheet-run {
+.ledger-line {
   position: absolute;
-  background: #e9e2d2;
-  transform: scaleX(0);
-  transform-origin: left top;
+  background: rgba(233, 226, 210, 0.11);
 }
 
-.sheet-run.is-vertical {
+.ledger-line.is-col {
+  top: 0;
   transform: scaleY(0);
   transform-origin: center top;
 }
 
-.sheet-cell {
-  position: absolute;
-  background: #e1d3af;
+.ledger-line.is-row {
+  left: 0;
   transform: scaleX(0);
   transform-origin: left center;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pixel-grid,
-  .sheet-run,
-  .sheet-cell {
-    opacity: 1;
-    transform: none;
-  }
+.ledger-cell {
+  position: absolute;
+  background: #c8b994;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.line {
+  display: block;
+  overflow: hidden;
+}
+
+h1 .line {
+  padding-bottom: 0.16em;
+  margin-bottom: -0.16em;
+}
+
+.line > span {
+  display: block;
 }
 
 .mast {
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 3;
+  z-index: 4;
   padding: calc(clamp(1.2rem, 2.4vh, 1.85rem) + env(safe-area-inset-top)) var(--datum) 0;
   pointer-events: none;
 }
@@ -172,7 +172,7 @@ body {
 
 main {
   position: relative;
-  z-index: 1;
+  z-index: 3;
 }
 
 .room {
@@ -292,8 +292,37 @@ h1 {
   }
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .wordmark {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  .line > span {
+    transform: translateY(110%);
+  }
+
+  .room-hero .action {
+    clip-path: inset(100% 0 0 0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .action {
     transition: none;
+  }
+
+  .wordmark,
+  .room-hero .action {
+    clip-path: none;
+  }
+
+  .line > span,
+  .ledger-line,
+  .ledger-cell {
+    transform: none;
+  }
+
+  .ledger-line {
+    background: rgba(233, 226, 210, 0.045);
   }
 }

@@ -6,166 +6,210 @@ import { createExhibition } from './exhibition.js';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const pixelGrid = document.querySelector('.pixel-grid');
-const sheet = document.querySelector('.sheet');
-let sheetReady = false;
-let sheetTimeline = null;
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const compact = window.matchMedia('(max-width: 759px)').matches;
+const canvas = document.querySelector('#installation');
+const exhibition = createExhibition(canvas, { reduced, compact });
+const ledger = document.querySelector('.ledger');
+const wordmark = document.querySelector('.wordmark');
+const heroLines = document.querySelectorAll('.room-hero .line > span');
+const heroAction = document.querySelector('.room-hero .action');
 
-function sheetMetrics() {
+const INK_LINE = 'rgba(233, 226, 210, 0.045)';
+const INK_DRAW = 'rgba(233, 226, 210, 0.11)';
+const ROOM_SPAN = 5;
+
+let metrics = null;
+let cell = null;
+let baseCol = 0;
+let baseRow = 0;
+let introDone = false;
+let intro = null;
+
+function gridMetrics() {
   const dpr = window.devicePixelRatio || 1;
   const colPx = Math.max(1, Math.round(96 * dpr));
   const rowPx = Math.max(1, Math.round(64 * dpr));
-  const wordmark = document.querySelector('.wordmark');
-  const originX = Math.round((wordmark?.getBoundingClientRect().left || 0) * dpr) / dpr;
+  const mark = wordmark?.getBoundingClientRect().left || 0;
   return {
     dpr,
     line: 1 / dpr,
     col: colPx / dpr,
     row: rowPx / dpr,
-    colPx,
-    rowPx,
-    originX,
+    originX: Math.round(mark * dpr) / dpr,
     originY: 0,
   };
 }
 
-function paintLedger(metrics) {
-  if (!pixelGrid) return;
-  const tile = document.createElement('canvas');
-  tile.width = metrics.colPx;
-  tile.height = metrics.rowPx;
-  const context = tile.getContext('2d');
-  context.clearRect(0, 0, tile.width, tile.height);
-  context.strokeStyle = 'rgba(233, 226, 210, 0.045)';
-  context.lineWidth = 1;
-  context.beginPath();
-  context.moveTo(0.5, 0);
-  context.lineTo(0.5, tile.height);
-  context.moveTo(0, 0.5);
-  context.lineTo(tile.width, 0.5);
-  context.stroke();
-  pixelGrid.style.backgroundImage = `url(${tile.toDataURL()})`;
-  pixelGrid.style.backgroundSize = `${metrics.col}px ${metrics.row}px`;
-  pixelGrid.style.backgroundPosition = `${metrics.originX}px ${metrics.originY}px`;
+function makeLine(className) {
+  const el = document.createElement('div');
+  el.className = `ledger-line ${className}`;
+  el.style.background = INK_DRAW;
+  return el;
 }
 
-function intersects(a, b) {
-  return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+function placeCell(step) {
+  if (!cell || !metrics) return;
+  let col = baseCol;
+  let row = baseRow;
+  const maxCol = Math.floor((window.innerWidth - metrics.originX - metrics.col) / metrics.col);
+  for (let i = 0; i < step; i += 1) {
+    if (col + 1 > maxCol) {
+      col = baseCol;
+      row += 1;
+    } else {
+      col += 1;
+    }
+  }
+  cell.style.left = `${metrics.originX + col * metrics.col}px`;
+  cell.style.top = `${metrics.originY + row * metrics.row}px`;
+  cell.style.width = `${metrics.col}px`;
+  cell.style.height = `${metrics.row}px`;
 }
 
-function layoutSheet() {
-  const metrics = sheetMetrics();
-  paintLedger(metrics);
+function chooseCell(grid) {
+  const headline = document.querySelector('.room-hero h1')?.getBoundingClientRect();
   const width = window.innerWidth;
   const height = window.innerHeight;
-  const rows = [];
-  for (let y = metrics.originY; y < height; y += metrics.row) rows.push(y);
-  const rest = exhibition.snapHorizon(null);
-  const headline = document.querySelector('h1')?.getBoundingClientRect();
-  const restBottom = rest?.maxY ?? height * 0.72;
-  let tangent = rows.reduce(
-    (best, y) => (Math.abs(y - restBottom) < Math.abs(best - restBottom) ? y : best),
-    rows[0],
-  );
-  if (headline && tangent > headline.top && tangent < headline.bottom + metrics.row) {
-    const below = rows.find((y) => y >= headline.bottom + metrics.row);
-    if (below != null) tangent = below;
+  let left = width * (width < 760 ? 0.5 : 0.58);
+  if (headline && headline.top < height * 0.62) {
+    left = Math.max(left, headline.right + grid.col);
   }
-  const bounds = exhibition.snapHorizon(tangent) || exhibition.rimBounds();
-  if (!bounds || !sheet) return metrics;
-
-  const span = Math.max(metrics.col, bounds.maxX - bounds.minX);
-  let left = bounds.minX + span * 0.56;
-  left = metrics.originX + Math.round((left - metrics.originX) / metrics.col) * metrics.col;
-  const minLeft = Math.max(metrics.originX + metrics.col, bounds.minX);
-  const maxLeft = width - metrics.col - 16;
-  left = Math.min(maxLeft, Math.max(minLeft, left));
-  left = metrics.originX + Math.round((left - metrics.originX) / metrics.col) * metrics.col;
-  const top = tangent - metrics.row;
-  const cell = {
-    left,
-    top,
-    right: left + metrics.col,
-    bottom: top + metrics.row,
-  };
-  if (headline && intersects(cell, headline)) {
-    left += metrics.col;
-    cell.left = left;
-    cell.right = left + metrics.col;
+  let col = Math.ceil((left - grid.originX) / grid.col);
+  const maxCol = Math.floor((width - grid.originX - grid.col) / grid.col);
+  col = Math.max(0, Math.min(maxCol, col));
+  let row = Math.round((height * 0.42) / grid.row);
+  const maxRow = Math.floor((height - grid.row) / grid.row);
+  row = Math.max(1, Math.min(maxRow, row));
+  if (headline) {
+    const top = row * grid.row;
+    const box = {
+      left: grid.originX + col * grid.col,
+      right: grid.originX + (col + 1) * grid.col,
+      top,
+      bottom: top + grid.row,
+    };
+    const hits = !(box.right <= headline.left || box.left >= headline.right || box.bottom <= headline.top || box.top >= headline.bottom);
+    if (hits) row = Math.min(maxRow, Math.ceil(headline.bottom / grid.row) + 1);
   }
-
-  const routeY = top + metrics.row;
-  let runX = left - metrics.col * 2;
-  const note = document.querySelector('.room-hero .note')?.getBoundingClientRect();
-  const blocked = [headline, note].filter(Boolean);
-  const routeCrossesCopy = blocked.some(
-    (box) => routeY >= box.top - 6 && routeY <= box.bottom + 6 && runX < box.right,
-  );
-  if (routeCrossesCopy) {
-    runX = Math.max(runX, blocked.reduce((edge, box) => Math.max(edge, box.right), 0) + metrics.col);
-  }
-  if (runX > left - metrics.col) runX = left - metrics.col;
-  runX = metrics.originX + Math.round((runX - metrics.originX) / metrics.col) * metrics.col;
-
-  sheet.replaceChildren();
-  const vertical = document.createElement('div');
-  vertical.className = 'sheet-run is-vertical';
-  vertical.style.left = `${runX}px`;
-  vertical.style.top = `${routeY - metrics.row}px`;
-  vertical.style.width = `${metrics.line}px`;
-  vertical.style.height = `${metrics.row}px`;
-
-  const horizontal = document.createElement('div');
-  horizontal.className = 'sheet-run';
-  horizontal.style.left = `${runX}px`;
-  horizontal.style.top = `${routeY}px`;
-  horizontal.style.width = `${Math.max(metrics.col, left - runX)}px`;
-  horizontal.style.height = `${metrics.line}px`;
-
-  const inlay = document.createElement('div');
-  inlay.className = 'sheet-cell';
-  inlay.style.left = `${left}px`;
-  inlay.style.top = `${top}px`;
-  inlay.style.width = `${metrics.col}px`;
-  inlay.style.height = `${metrics.row}px`;
-  sheet.append(vertical, horizontal, inlay);
-
-  if (reduced) {
-    pixelGrid.style.opacity = '1';
-    vertical.style.transform = 'none';
-    horizontal.style.transform = 'none';
-    inlay.style.transform = 'none';
-    return metrics;
-  }
-
-  const showFinal = reduced || sheetReady;
-  if (showFinal) {
-    pixelGrid.style.opacity = '1';
-    vertical.style.transform = 'none';
-    horizontal.style.transform = 'none';
-    inlay.style.transform = 'none';
-    return metrics;
-  }
-  sheetTimeline?.kill();
-  sheetTimeline = gsap.timeline({
-    defaults: { ease: 'power2.inOut' },
-    onComplete: () => {
-      sheetReady = true;
-    },
-  });
-  sheetTimeline.to(pixelGrid, { opacity: 1, duration: 0.9 }, 0.15);
-  sheetTimeline.to(vertical, { scaleY: 1, duration: 0.62 }, 3.45);
-  sheetTimeline.to(horizontal, { scaleX: 1, duration: 0.7 }, 3.95);
-  sheetTimeline.to(inlay, { scaleX: 1, duration: 0.55 }, 4.55);
-  return metrics;
+  return { col, row };
 }
 
-const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const compact = window.matchMedia('(max-width: 759px)').matches;
-const canvas = document.querySelector('#installation');
-const exhibition = createExhibition(canvas, { reduced, compact });
+function buildLedger() {
+  metrics = gridMetrics();
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  ledger.replaceChildren();
 
-const ROOM_SPAN = 5;
+  const columns = [];
+  const leftColumns = [];
+  for (let x = metrics.originX; x < width + 1; x += metrics.col) {
+    const line = makeLine('is-col');
+    line.style.left = `${x}px`;
+    line.style.width = `${metrics.line}px`;
+    line.style.height = `${height}px`;
+    columns.push(line);
+  }
+  for (let x = metrics.originX - metrics.col; x > -metrics.col; x -= metrics.col) {
+    const line = makeLine('is-col');
+    line.style.left = `${x}px`;
+    line.style.width = `${metrics.line}px`;
+    line.style.height = `${height}px`;
+    leftColumns.push(line);
+  }
+
+  const rows = [];
+  for (let y = 0; y < height + 1; y += metrics.row) {
+    const line = makeLine('is-row');
+    line.style.top = `${y}px`;
+    line.style.height = `${metrics.line}px`;
+    line.style.width = `${width}px`;
+    rows.push(line);
+  }
+
+  cell = document.createElement('div');
+  cell.className = 'ledger-cell';
+  const picked = chooseCell(metrics);
+  baseCol = picked.col;
+  baseRow = picked.row;
+  ledger.append(...leftColumns, ...columns, ...rows, cell);
+  placeCell(0);
+
+  return { columns, leftColumns, rows };
+}
+
+function showSettled(parts) {
+  [...parts.leftColumns, ...parts.columns, ...parts.rows].forEach((line) => {
+    line.style.transform = 'none';
+    line.style.background = INK_LINE;
+  });
+  cell.style.transform = 'none';
+  if (wordmark) wordmark.style.clipPath = 'none';
+  heroLines.forEach((line) => {
+    line.style.transform = 'none';
+  });
+  if (heroAction) heroAction.style.clipPath = 'none';
+}
+
+function playIntro(parts) {
+  intro?.kill();
+  const lines = [...parts.leftColumns, ...parts.columns, ...parts.rows];
+  intro = gsap.timeline({
+    defaults: { ease: 'power2.inOut' },
+    onComplete: () => {
+      introDone = true;
+    },
+  });
+
+  if (wordmark) {
+    intro.fromTo(
+      wordmark,
+      { clipPath: 'inset(0 100% 0 0)' },
+      { clipPath: 'inset(0 0% 0 0)', duration: 0.55 },
+      0.02,
+    );
+  }
+
+  const columnSpan = 0.62;
+  const columnDur = 0.34;
+  parts.leftColumns.forEach((line) => {
+    intro.fromTo(line, { scaleY: 0 }, { scaleY: 1, duration: columnDur }, 0.02);
+  });
+  parts.columns.forEach((line, index) => {
+    const at = parts.columns.length <= 1 ? 0 : (index / (parts.columns.length - 1)) * columnSpan;
+    intro.fromTo(line, { scaleY: 0 }, { scaleY: 1, duration: columnDur }, 0.02 + at);
+  });
+
+  const rowStart = 0.72;
+  const rowSpan = 0.48;
+  const rowDur = 0.3;
+  parts.rows.forEach((line, index) => {
+    const at = parts.rows.length <= 1 ? 0 : (index / (parts.rows.length - 1)) * rowSpan;
+    intro.fromTo(line, { scaleX: 0 }, { scaleX: 1, duration: rowDur }, rowStart + at);
+  });
+
+  intro.to(lines, { backgroundColor: INK_LINE, duration: 0.35, ease: 'power2.out' }, 1.28);
+  intro.fromTo(cell, { scaleX: 0 }, { scaleX: 1, duration: 0.38, ease: 'power2.inOut' }, 1.55);
+
+  heroLines.forEach((line, index) => {
+    intro.to(line, { y: 0, duration: 0.4, ease: 'power2.out' }, 1.98 + index * 0.16);
+  });
+  if (heroAction) {
+    intro.fromTo(
+      heroAction,
+      { clipPath: 'inset(100% 0 0 0)' },
+      { clipPath: 'inset(0% 0 0 0)', duration: 0.34, ease: 'power2.out' },
+      1.98 + heroLines.length * 0.16,
+    );
+  }
+}
+
+function layoutLedger() {
+  const parts = buildLedger();
+  if (reduced || introDone) showSettled(parts);
+  else playIntro(parts);
+}
+
 const rooms = document.querySelectorAll('.room');
 
 function updatePlacards() {
@@ -176,10 +220,13 @@ function updatePlacards() {
     const away = Math.abs(room.getBoundingClientRect().top) / height;
     const fade = Math.min(1, Math.max(0, (away - 0.04) / 0.18));
     placard.style.opacity = String(1 - fade);
-    if (room.id === 'entrance' && sheet) {
-      sheet.style.opacity = String(1 - fade);
-    }
   });
+}
+
+function onScroll(progress) {
+  const room = progress * ROOM_SPAN;
+  exhibition.setScroll(room);
+  placeCell(Math.max(0, Math.min(ROOM_SPAN, Math.round(room))));
 }
 
 ScrollTrigger.create({
@@ -187,9 +234,7 @@ ScrollTrigger.create({
   start: 'top top',
   end: 'bottom bottom',
   scrub: reduced ? true : 0.5,
-  onUpdate: (self) => {
-    exhibition.setScroll(self.progress * ROOM_SPAN);
-  },
+  onUpdate: (self) => onScroll(self.progress),
 });
 
 let lenis = null;
@@ -204,7 +249,6 @@ if (!reduced) {
   });
   lenis.on('scroll', ScrollTrigger.update);
 
-  const wordmark = document.querySelector('.wordmark');
   wordmark?.addEventListener('click', (event) => {
     const href = wordmark.getAttribute('href');
     if (!href || !href.startsWith('#')) return;
@@ -220,24 +264,23 @@ gsap.ticker.add((time) => {
 });
 gsap.ticker.lagSmoothing(0);
 
-function bootSheet() {
-  const start = () => layoutSheet();
-  if (document.fonts?.ready) document.fonts.ready.then(start);
-  else start();
+function boot() {
+  layoutLedger();
 }
 
-bootSheet();
+if (document.fonts?.ready) document.fonts.ready.then(boot);
+else boot();
 
 window.addEventListener('resize', () => {
   exhibition.resize();
-  layoutSheet();
   ScrollTrigger.refresh();
+  if (reduced || introDone) layoutLedger();
 });
 
 function syncFromScroll() {
   const trigger = ScrollTrigger.getAll()[0];
   if (!trigger) return;
-  exhibition.setScroll(trigger.progress * ROOM_SPAN);
+  onScroll(trigger.progress);
 }
 
 requestAnimationFrame(() => {

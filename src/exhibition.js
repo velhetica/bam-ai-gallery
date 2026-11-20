@@ -12,7 +12,7 @@ const INK = 0x080807;
 // while the camera dollies. Parallax comes from depth, not from yawing
 // the plate across the type.
 const CAMERA_KEYS = [
-  { x: 1.15, y: 1.48, z: 7.85, lx: 6.05, ly: -0.04 },
+  { x: 1.25, y: 0.12, z: 8.5, lx: 4.15, ly: 0.12 },
   { x: 1.25, y: 0.12, z: 7.6, lx: 4.15, ly: 0.12 },
   { x: 0.15, y: 0.12, z: 8.85, lx: 3.05, ly: 0.12 },
   { x: 1.4, y: 0.12, z: 10.5, lx: 4.3, ly: 0.12 },
@@ -204,20 +204,21 @@ export function createExhibition(canvas, { reduced, compact }) {
   }
 
   function drawAmount(entry) {
+    const gate = clamp01((roomFloat - 0.4) / 0.34);
+    if (gate <= 0) return 0;
+
     if (reduced) {
-      if (entry.stroke.room === 'persist') return roomFloat > 0.4 ? 1 : 0;
-      return presenceFor(entry.stroke.room, roomFloat) > 0.5 ? 1 : 0;
+      if (entry.stroke.room === 'persist') return gate;
+      return (presenceFor(entry.stroke.room, roomFloat) > 0.5 ? 1 : 0) * gate;
     }
 
     if (entry.stroke.room === 'persist') {
-      const reveal = Math.min(1, Math.max(0, (roomFloat - 0.12) / 0.55));
-      return entry.stroke.intro * reveal;
+      const reveal = Math.min(1, Math.max(0, (roomFloat - 0.4) / 0.45));
+      return entry.stroke.intro * reveal * gate;
     }
 
     const presence = presenceFor(entry.stroke.room, roomFloat);
-    const scrolled = sequenced(entry.stroke.order, entry.stroke.count, presence);
-    if (entry.stroke.room === 0) return Math.min(entry.stroke.intro, scrolled);
-    return scrolled;
+    return sequenced(entry.stroke.order, entry.stroke.count, presence) * gate;
   }
 
   function applyDraw(entry) {
@@ -312,75 +313,10 @@ export function createExhibition(canvas, { reduced, compact }) {
     });
   }
 
-  const projector = new THREE.Vector3();
-
-  function updateCamera() {
+  function render() {
     sampleCamera(roomFloat, view, isCompact);
     camera.position.set(view.px, view.py, view.pz);
     camera.lookAt(view.lx, view.ly, 0);
-    heroRig.updateMatrixWorld(true);
-  }
-
-  function projectPoints(points) {
-    const width = canvas.clientWidth || window.innerWidth;
-    const height = canvas.clientHeight || window.innerHeight;
-    const projected = [];
-    for (let i = 0; i < points.length; i += 3) {
-      projector.set(points[i], points[i + 1], points[i + 2]);
-      projector.applyMatrix4(heroRig.matrixWorld);
-      projector.project(camera);
-      projected.push({
-        x: (projector.x * 0.5 + 0.5) * width,
-        y: (-projector.y * 0.5 + 0.5) * height,
-      });
-    }
-    return projected;
-  }
-
-  function strokeByRole(role) {
-    return built.find((entry) => entry.stroke.role === role);
-  }
-
-  function rimScreen() {
-    updateCamera();
-    const entry = strokeByRole('rim');
-    if (!entry) return null;
-    const points = projectPoints(entry.stroke.points);
-    return points.reduce(
-      (box, point) => ({
-        minX: Math.min(box.minX, point.x),
-        maxX: Math.max(box.maxX, point.x),
-        minY: Math.min(box.minY, point.y),
-        maxY: Math.max(box.maxY, point.y),
-      }),
-      { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity },
-    );
-  }
-
-  function snapHorizon(targetY) {
-    applyRigShift();
-    const rest = rimScreen();
-    if (!rest || !Number.isFinite(rest.maxY)) return null;
-    if (!Number.isFinite(targetY)) return rest;
-    const y0 = rest.maxY;
-    heroRig.position.y += 0.12;
-    const shifted = rimScreen();
-    const slope = shifted ? (shifted.maxY - y0) / 0.12 : 0;
-    if (!Number.isFinite(slope) || Math.abs(slope) < 0.25) {
-      applyRigShift();
-      return rimScreen();
-    }
-    const delta = Math.max(-56, Math.min(56, targetY - y0));
-    heroRig.position.y = heroRig.position.y - 0.12 + delta / slope;
-    return rimScreen();
-  }
-
-  function rimBounds() {
-    return rimScreen();
-  }
-
-  function render() {
-    updateCamera();
     built.forEach(applyDraw);
     renderer.render(scene, camera);
   }
@@ -401,5 +337,5 @@ export function createExhibition(canvas, { reduced, compact }) {
   setScroll(0);
   render();
 
-  return { setScroll, resize, render, destroy, snapHorizon, rimBounds };
+  return { setScroll, resize, render, destroy };
 }

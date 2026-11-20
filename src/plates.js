@@ -26,10 +26,6 @@ function line(x1, y1, x2, y2, z, opts) {
   return stroke([x1, y1, z, x2, y2, z], opts);
 }
 
-function seg(x1, y1, z1, x2, y2, z2, opts) {
-  return stroke([x1, y1, z1, x2, y2, z2], opts);
-}
-
 function arc(cx, cy, z, r, a0, a1, opts) {
   const span = Math.abs(a1 - a0);
   const segments = Math.max(10, Math.ceil(span / (Math.PI / 48)));
@@ -93,67 +89,7 @@ export function createStrokes(compact) {
   push(line(5.45, 0.15, 5.45, 2.2, 3.55, { room: 'persist', width: 1.2 }));
   push(line(4.65, 1.62, 6.55, 1.62, 3.95, { room: 'persist', width: 1.05 }));
 
-  // Hero wafer. The flat ledger grid, the route and the inlay live in the page.
-  const cx = 6.15;
-  const cz = -0.55;
-  const radius = 4.55;
-  const rim = (r, y, a0, a1) => {
-    const steps = Math.max(28, Math.ceil(Math.abs(a1 - a0) / (Math.PI / 80)));
-    const points = [];
-    for (let i = 0; i <= steps; i += 1) {
-      const a = a0 + ((a1 - a0) * i) / steps;
-      points.push(cx + Math.cos(a) * r, y, cz + Math.sin(a) * r);
-    }
-    return points;
-  };
-
-  const rimStart = 2.22;
-  const rimEnd = -0.22;
-  push(
-    stroke(rim(radius, 0.012, rimStart, rimEnd), {
-      room: 0,
-      opening: true,
-      role: 'rim',
-      at: 1.15,
-      dur: 1.7,
-      width: 1.05,
-      opacity: 0.92,
-    }),
-  );
-
-  const tickCount = compact ? 7 : 13;
-  for (let i = 0; i <= tickCount; i += 1) {
-    const a = rimStart + ((rimEnd - rimStart) * i) / tickCount;
-    const major = i % 3 === 0;
-    if (compact && !major) continue;
-    const px = cx + Math.cos(a) * radius;
-    const pz = cz + Math.sin(a) * radius;
-    const len = major ? 0.34 : 0.16;
-    push(
-      seg(px, 0.012, pz, px, 0.012 + len, pz, {
-        room: 0,
-        opening: true,
-        at: 2.65 + i * 0.065,
-        dur: 0.3,
-        width: major ? 1.05 : 0.8,
-        opacity: major ? 0.92 : 0.62,
-        fine: !major,
-      }),
-    );
-  }
-
-  push(
-    stroke(rim(radius + 0.045, 0.028, rimStart, rimEnd), {
-      room: 0,
-      opening: true,
-      role: 'horizon',
-      at: 5.15,
-      dur: 1.75,
-      width: 1.65,
-      color: BRIGHT,
-      opacity: 1,
-    }),
-  );
+  // The hero is the flat ledger on the page. Later plates keep their strokes.
 
   // Plate I. A registration gate. One vertical where the reading aligns.
   push(line(2.35, 1.68, 6.05, 1.68, 0.06, { room: 1, width: 1.05 }));
