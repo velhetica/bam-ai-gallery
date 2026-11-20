@@ -23,10 +23,7 @@ let mastRule = null;
 let mastDrawn = false;
 let breath = 1;
 let bandHeight = 0;
-let deviceEl = null;
-let deviceRect = null;
-let deviceDrawn = false;
-let corner = null;
+let gaugeX = 0;
 let routeLayer = null;
 let activeRoutes = [];
 let lastPulse = 0;
@@ -191,12 +188,8 @@ function cellBox(step) {
   const textRight = width < 800 ? width * 0.55 : Math.min(width * 0.46, 720);
   let minCol = Math.ceil((textRight - metrics.originX) / metrics.col);
   if (minCol > maxCol) minCol = maxCol;
-  const startCol = corner
-    ? Math.round((corner.left - metrics.originX) / metrics.col)
-    : Math.max(minCol, maxCol - (maxCol > minCol + 1 ? 1 : 0));
-  const startRow = corner
-    ? Math.round(corner.top / metrics.row)
-    : Math.min(maxRow - 1, Math.max(1, baseRow));
+  const startCol = Math.max(minCol, maxCol - (maxCol > minCol + 1 ? 1 : 0));
+  const startRow = Math.min(maxRow - 1, Math.max(1, baseRow));
   const steps = [
     [0, 0],
     [-1, 0],
@@ -330,92 +323,19 @@ function layoutStage() {
   const width = window.innerWidth;
   const narrow = width < 768;
   const textRight = document.querySelector('.room-hero .placard')?.getBoundingClientRect().right ?? width * 0.42;
-  let ruleX;
   if (narrow) {
-    ruleX = snap(metrics.originX - metrics.col);
-    if (ruleX < 2) ruleX = snap(metrics.originX);
-  } else {
-    const minX = textRight + metrics.col * 0.35;
-    ruleX = metrics.originX;
-    for (let x = metrics.originX; x < width - metrics.col; x += metrics.col) {
-      if (x >= minX) {
-        ruleX = snap(x);
-        break;
-      }
+    gaugeX = snap(Math.max(2, metrics.originX - metrics.col));
+    return;
+  }
+  let ruleX = metrics.originX + metrics.col;
+  const minX = textRight + metrics.col * 0.5;
+  for (let x = metrics.originX; x < width - metrics.col; x += metrics.col) {
+    if (x >= minX) {
+      ruleX = snap(x);
+      break;
     }
   }
-
-  let span = narrow ? 4 : 6;
-  const minSpan = narrow ? 3 : 5;
-  let devW = span * metrics.col;
-  let devH = Math.max(metrics.row * 3, Math.round((devW * 0.75) / metrics.row) * metrics.row);
-  let devLeft = narrow
-    ? metrics.originX + Math.floor((width - devW - metrics.col - metrics.originX) / metrics.col) * metrics.col
-    : ruleX + metrics.col;
-  while (span > minSpan && (devLeft < ruleX || devLeft + devW > width - 2)) {
-    span -= 1;
-    devW = span * metrics.col;
-    devH = Math.max(metrics.row * 3, Math.round((devW * 0.75) / metrics.row) * metrics.row);
-    devLeft = narrow
-      ? metrics.originX + Math.floor((width - devW - metrics.col - metrics.originX) / metrics.col) * metrics.col
-      : ruleX + metrics.col;
-  }
-  devLeft = snap(Math.max(metrics.originX, devLeft));
-  const devTop = snap(bandHeight);
-  deviceRect = { left: devLeft, top: devTop, width: devW, height: devH, ruleX };
-  corner = { left: devLeft + devW - metrics.col, top: devTop };
-  mountDevice();
-}
-
-function mountDevice() {
-  if (!deviceEl) {
-    deviceEl = document.createElement('div');
-    deviceEl.className = 'device';
-    deviceEl.dataset.device = 'ipad';
-    const body = document.createElement('div');
-    body.className = 'device-body';
-    const screen = document.createElement('div');
-    screen.className = 'device-screen';
-    const slot = document.createElement('div');
-    slot.className = 'device-slot';
-    screen.append(slot);
-    body.append(screen);
-    const trace = document.createElementNS(SVG_NS, 'svg');
-    trace.setAttribute('class', 'device-trace');
-    const path = document.createElementNS(SVG_NS, 'path');
-    trace.append(path);
-    deviceEl.append(body, trace);
-    deviceEl._body = body;
-    deviceEl._screen = screen;
-    deviceEl._slot = slot;
-    deviceEl._path = path;
-  }
-  const { left, top, width, height } = deviceRect;
-  deviceEl.style.left = `${left}px`;
-  deviceEl.style.top = `${top}px`;
-  deviceEl.style.width = `${width}px`;
-  deviceEl.style.height = `${height}px`;
-  const bezel = window.innerWidth < 768 ? 8 : 12;
-  const radius = Math.min(window.innerWidth < 768 ? 10 : 14, width / 2 - 2, height / 2 - 2);
-  deviceEl._body.style.borderRadius = `${radius}px`;
-  deviceEl._screen.style.inset = `${bezel}px`;
-  deviceEl._screen.style.borderRadius = `${Math.max(4, radius - 6)}px`;
-  deviceEl._screen.style.backgroundSize = `${metrics.col}px ${metrics.row}px`;
-  deviceEl._screen.style.backgroundPosition = `${metrics.col - bezel}px ${metrics.row - bezel}px`;
-  deviceEl._screen.style.backgroundImage = `linear-gradient(to right, rgba(233,226,210,0.045) 1px, transparent 1px), linear-gradient(to bottom, rgba(233,226,210,0.045) 1px, transparent 1px)`;
-  const path = deviceEl._path;
-  const r = radius;
-  path.setAttribute('d', `M ${width} ${r} V ${height - r} Q ${width} ${height} ${width - r} ${height} H ${r} Q 0 ${height} 0 ${height - r} V ${r} Q 0 0 ${r} 0 H ${width - r} Q ${width} 0 ${width} ${r}`);
-  path.setAttribute('stroke-width', `${metrics.line}`);
-  const svg = path.ownerSVGElement;
-  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-  svg.setAttribute('width', `${width}`);
-  svg.setAttribute('height', `${height}`);
-  document.querySelector('#entrance').append(deviceEl);
-  if (reduced || deviceDrawn) {
-    deviceEl._body.style.clipPath = 'none';
-    path.style.opacity = '0';
-  }
+  gaugeX = ruleX;
 }
 
 function buildMastRule() {
@@ -437,7 +357,7 @@ function buildMastRule() {
   }
   mastRule.querySelectorAll('.mast-tick').forEach((tick) => tick.remove());
   const height = window.innerHeight - bandHeight;
-  const ruleX = deviceRect.ruleX;
+  const ruleX = gaugeX;
   const ticksGoLeft = ruleX >= metrics.originX;
   const minor = Math.max(8, metrics.col / 6);
   const count = Math.max(1, Math.floor(height / minor));
@@ -512,7 +432,7 @@ function mountBranches() {
 }
 
 function placeBranches() {
-  const ruleX = deviceRect?.ruleX ?? metrics.originX;
+  const ruleX = gaugeX || metrics.originX;
   const scrollY = window.scrollY;
   rooms.forEach((section) => {
     const pack = section._branch;
@@ -539,23 +459,6 @@ function drawBranch(section, timeline, start) {
   }
   const at = start || 0;
   timeline.fromTo(pack.bar, { scaleX: 0 }, { scaleX: 1, duration: 0.7, ease: 'power1.out' }, at);
-}
-
-function drawDevice(timeline, start) {
-  if (!deviceEl || deviceDrawn) return;
-  deviceDrawn = true;
-  const path = deviceEl._path;
-  const body = deviceEl._body;
-  if (reduced || !timeline) {
-    body.style.clipPath = 'none';
-    path.style.opacity = '0';
-    return;
-  }
-  const length = path.getTotalLength();
-  gsap.set(path, { strokeDasharray: length, strokeDashoffset: length, opacity: 1 });
-  timeline.to(path, { strokeDashoffset: 0, duration: 0.9, ease: 'power1.out' }, start);
-  timeline.to(body, { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.5, ease: 'power2.out' }, start + 0.7);
-  timeline.to(path, { opacity: 0, duration: 0.25, ease: 'none' }, start + 1.15);
 }
 
 function circleTarget(progress) {
@@ -636,6 +539,7 @@ function applyScroll() {
   applyCircle(progress);
   applyHead(progress);
   applyGauge(progress);
+  applyQuiet();
   if (!introDone) return;
   const next = plateIndex(window.scrollY);
   if (next === plate) return;
@@ -671,10 +575,6 @@ function showType() {
     mastRule.querySelectorAll('.mast-tick').forEach((tick) => {
       tick.style.opacity = '1';
     });
-  }
-  if (deviceEl) {
-    deviceEl._body.style.clipPath = 'none';
-    deviceEl._path.style.opacity = '0';
   }
 }
 
@@ -763,22 +663,6 @@ function ensureRouteLayer() {
   ledger.append(routeLayer);
 }
 
-function crossesDevice(x1, y1, x2, y2) {
-  if (!deviceRect) return false;
-  const bezel = window.innerWidth < 768 ? 8 : 12;
-  const rect = {
-    l: deviceRect.left + bezel,
-    t: deviceRect.top + bezel,
-    r: deviceRect.left + deviceRect.width - bezel,
-    b: deviceRect.top + deviceRect.height - bezel,
-  };
-  const minX = Math.min(x1, x2);
-  const maxX = Math.max(x1, x2);
-  const minY = Math.min(y1, y2);
-  const maxY = Math.max(y1, y2);
-  return maxX > rect.l && minX < rect.r && maxY > rect.t && minY < rect.b;
-}
-
 function routePoints() {
   const width = window.innerWidth;
   const height = window.innerHeight;
@@ -806,11 +690,11 @@ function routePoints() {
   const turns = 1 + Math.floor(Math.random() * 3);
   for (let i = 0; i < turns; i += 1) {
     if (horizontal) {
-      const options = xs.filter((nx) => nx !== x && !crossesDevice(x, y, nx, y));
+      const options = xs.filter((nx) => nx !== x);
       if (!options.length) break;
       x = options[Math.floor(Math.random() * options.length)];
     } else {
-      const options = ys.filter((ny) => ny !== y && !crossesDevice(x, y, x, ny));
+      const options = ys.filter((ny) => ny !== y);
       if (!options.length) break;
       y = options[Math.floor(Math.random() * options.length)];
     }
@@ -820,8 +704,24 @@ function routePoints() {
   return points.length > 1 ? points : null;
 }
 
+function industryQuiet() {
+  const section = document.querySelector('#industry');
+  if (!section) return false;
+  const rect = section.getBoundingClientRect();
+  return rect.top < window.innerHeight * 0.62 && rect.bottom > window.innerHeight * 0.28;
+}
+
+function applyQuiet() {
+  const quiet = industryQuiet();
+  document.body.classList.toggle('is-industry', quiet);
+  if (routeLayer) routeLayer.style.visibility = quiet ? 'hidden' : '';
+  if (!quiet) return;
+  activeRoutes.forEach((route) => route.kill());
+  activeRoutes = [];
+}
+
 function spawnRoute() {
-  if (reduced || document.hidden || !routeLayer || activeRoutes.length >= 2) return;
+  if (reduced || document.hidden || !routeLayer || activeRoutes.length >= 2 || industryQuiet()) return;
   const points = routePoints();
   if (!points) return;
   const path = document.createElementNS(SVG_NS, 'path');
@@ -971,8 +871,6 @@ function playIntro(lines) {
   const intro = gsap.timeline();
   intro.fromTo(lines, { opacity: 0 }, { opacity: 1, duration: 0.45, ease: 'power2.out' }, 0);
   drawMast(intro, 0.35);
-  drawDevice(intro, 0.55);
-  drawBranch(document.querySelector('#entrance'), intro, 0.9);
   placeCell(0, false);
   intro.fromTo(
     cell,
@@ -1058,6 +956,8 @@ function drawJourney(section, tl, start) {
     path.style.strokeDasharray = `${length}`;
     tl.fromTo(path, { strokeDashoffset: length }, { strokeDashoffset: 0, duration: path.dataset.draw === 'curve' ? 1.15 : 0.85, ease: 'power1.out' }, start + index * 0.16);
   });
+  const paid = svg.querySelector('.node-paid');
+  if (paid) tl.to(paid, { opacity: 1, duration: 0.25, ease: 'none' }, start + Math.max(0.4, paths.length * 0.16));
 }
 
 let moneyOn = false;

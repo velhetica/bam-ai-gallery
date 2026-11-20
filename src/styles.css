@@ -340,47 +340,6 @@ body {
   transform-origin: right center;
 }
 
-.device {
-  position: absolute;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.device-body {
-  position: absolute;
-  inset: 0;
-  background: #181714;
-  border: 1px solid #c8b994;
-  border-radius: 14px;
-}
-
-.device-screen {
-  position: absolute;
-  inset: 12px;
-  background-color: #080807;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.device-slot {
-  position: absolute;
-  inset: 0;
-  pointer-events: auto;
-}
-
-.device-trace {
-  position: absolute;
-  inset: 0;
-  overflow: visible;
-  pointer-events: none;
-}
-
-.device-trace path {
-  fill: none;
-  stroke: #c8b994;
-  shape-rendering: crispEdges;
-}
-
 .route-layer {
   position: absolute;
   inset: 0;
@@ -615,8 +574,47 @@ h1 {
 }
 
 .journey-wide {
-  width: min(100%, 72rem);
-  aspect-ratio: 1200 / 460;
+  width: 100%;
+  aspect-ratio: 1200 / 280;
+}
+
+.money-notes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2.75rem 3.5rem;
+  margin-top: 2.25rem;
+}
+
+.money-note {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+}
+
+.node-name {
+  margin: 0;
+  color: #aba393;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.stat {
+  margin: 0;
+}
+
+body.is-industry .ledger-line,
+body.is-industry .ledger-accent .ledger-line {
+  background: rgba(233, 226, 210, 0.02);
+}
+
+body.is-industry .ledger-accent,
+body.is-industry .mast-rule,
+body.is-industry .gauge-branch,
+body.is-industry .ledger-float,
+body.is-industry .route-layer {
+  opacity: 0;
 }
 
 .packets {
@@ -690,14 +688,14 @@ h1 {
 
 .figure-label {
   display: block;
-  max-width: 28ch;
-  margin-top: 0.45rem;
+  max-width: 32ch;
+  margin-top: 0.55rem;
   color: #aba393;
   font-family: var(--sans);
-  font-size: 0.78rem;
+  font-size: 15px;
   font-weight: 400;
   letter-spacing: 0;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .journey-stack {
@@ -755,12 +753,12 @@ h1 {
 
 .sources {
   max-width: 46rem;
-  margin: 2.4rem 0 0;
+  margin: 2.75rem 0 0;
   padding: 0;
   list-style: decimal;
   color: #aba393;
-  font-size: 0.68rem;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .sources li {
@@ -839,9 +837,9 @@ h1 {
 }
 
 .step p {
-  margin: 0.4rem 0 0;
+  margin: 0.45rem 0 0;
   color: #aba393;
-  font-size: 0.9rem;
+  font-size: 16px;
 }
 
 .step-cell {
@@ -854,12 +852,12 @@ h1 {
 }
 
 .agent-index {
-  margin: 2.4rem 0 0;
+  margin: 2.75rem 0 0;
   padding: 0;
   list-style: none;
-  color: #aba393;
-  font-size: 0.75rem;
-  line-height: 1.4;
+  color: #cfc6b6;
+  font-size: 15px;
+  line-height: 1.45;
 }
 
 .agent-index li {
@@ -902,14 +900,6 @@ h1 {
     --datum: calc(1.25rem + 48px);
   }
 
-  .device-body {
-    border-radius: 10px;
-  }
-
-  .device-screen {
-    inset: 8px;
-    border-radius: 6px;
-  }
 }
 
 @media (max-width: 759px) {
@@ -936,8 +926,13 @@ h1 {
 
   .journey-stack {
     display: block;
-    width: 100%;
-    aspect-ratio: 360 / 680;
+    width: min(100%, 22rem);
+    aspect-ratio: 320 / 520;
+  }
+
+  .money-notes {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
   }
 
   .works-copy {
@@ -973,10 +968,6 @@ h1 {
   .gauge-mark,
   .mast-tick {
     opacity: 0;
-  }
-
-  .device-body {
-    clip-path: inset(0 0 100% 100%);
   }
 
   .gauge-branch-bar {
@@ -1049,8 +1040,7 @@ h1 {
   .major-rule,
   .ledger-cell,
   .gauge-track,
-  .gauge-branch-bar,
-  .device-body {
+  .gauge-branch-bar {
     transform: none;
     clip-path: none;
   }
