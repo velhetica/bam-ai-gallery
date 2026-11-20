@@ -90,6 +90,14 @@ function paintGrain() {
   context.putImageData(image, 0, 0);
   grain.style.backgroundImage = `url(${tile.toDataURL()})`;
   grain.style.backgroundSize = '128px 128px';
+  const main = document.querySelector('main');
+  const rake = document.querySelector('.rake');
+  const sheet = document.querySelector('.ledger');
+  if (main) {
+    if (sheet && sheet.parentElement !== main) main.prepend(sheet);
+    if (rake && rake.parentElement !== main) main.prepend(rake);
+    if (grain.parentElement !== main) main.prepend(grain);
+  }
 }
 
 function mountSectionRules() {
@@ -293,7 +301,7 @@ function build() {
 
   const mastEl = document.querySelector('.mast');
   const cover = Math.ceil(mastEl?.getBoundingClientRect().bottom || (wordmark?.getBoundingClientRect().bottom || 48) + 20);
-  bandHeight = window.innerWidth < 760 ? Math.max(cover, 76) : cover;
+  bandHeight = cover;
   const rows = Math.max(1, Math.ceil(cover / metrics.row));
   baseRow = rows;
   layoutStage();

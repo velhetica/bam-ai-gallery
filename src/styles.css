@@ -102,14 +102,14 @@ body {
 }
 
 .grain {
-  z-index: 1;
+  z-index: -1;
   background-repeat: repeat;
   image-rendering: pixelated;
   opacity: 0.55;
 }
 
 .rake {
-  z-index: 1;
+  z-index: -1;
   background-image: linear-gradient(
     112deg,
     rgba(233, 226, 210, 0.045) 0%,
@@ -123,7 +123,7 @@ body {
 }
 
 .ledger {
-  z-index: 2;
+  z-index: -1;
 }
 
 .ledger-shift,
@@ -441,6 +441,7 @@ h1 .line {
 main {
   position: relative;
   z-index: 3;
+  background-color: var(--ink);
 }
 
 .room {
@@ -546,7 +547,7 @@ h1 {
 
 .story {
   position: relative;
-  z-index: 3;
+  z-index: auto;
   padding: 14vh var(--datum) 12vh;
   pointer-events: auto;
 }
@@ -802,7 +803,6 @@ body.is-works .ledger-accent {
 
 .story-works {
   position: relative;
-  isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 32rem) minmax(0, 1fr);
   align-items: stretch;
@@ -811,7 +811,7 @@ body.is-works .ledger-accent {
   padding-right: 0;
   padding-bottom: 8vh;
   overflow: hidden;
-  background: #080807;
+  background: transparent;
 }
 
 .works-copy {
@@ -899,7 +899,7 @@ body.is-works .ledger-accent {
 
 .works-photo {
   position: absolute;
-  z-index: 1;
+  z-index: auto;
   top: 0;
   right: -20vw;
   bottom: 0;
@@ -907,15 +907,9 @@ body.is-works .ledger-accent {
   margin: 0;
   background: transparent;
   pointer-events: none;
-  mix-blend-mode: lighten;
-  -webkit-mask-image:
-    linear-gradient(to right, transparent 0%, #000 46%),
-    linear-gradient(to top, transparent 0%, #000 20%);
-  -webkit-mask-composite: source-in;
-  mask-image:
-    linear-gradient(to right, transparent 0%, #000 46%),
-    linear-gradient(to top, transparent 0%, #000 20%);
-  mask-composite: intersect;
+  mix-blend-mode: normal;
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 .works-photo picture,
@@ -926,8 +920,16 @@ body.is-works .ledger-accent {
   object-fit: cover;
   object-position: right center;
   border-radius: 0;
-  background: transparent;
-  filter: brightness(0.85);
+  background-color: transparent;
+  mix-blend-mode: lighten;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 46%),
+    linear-gradient(to top, transparent 0%, #000 20%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 46%),
+    linear-gradient(to top, transparent 0%, #000 20%);
+  mask-composite: intersect;
 }
 
 @media (max-width: 767px) {
@@ -949,10 +951,6 @@ body.is-works .ledger-accent {
   .mast,
   .mast-band {
     background: #080807;
-  }
-
-  .mast {
-    padding-bottom: 16px;
   }
 
   .wordmark {
@@ -1042,10 +1040,13 @@ body.is-works .ledger-accent {
     width: 100%;
     height: auto;
     object-fit: contain;
-    filter: brightness(0.85);
+    filter: none;
     mix-blend-mode: lighten;
-    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 200px), transparent 100%);
-    mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 200px), transparent 100%);
+    background-color: transparent;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 72%, transparent 100%);
+    -webkit-mask-composite: source-over;
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 72%, transparent 100%);
+    mask-composite: add;
   }
 }
 
