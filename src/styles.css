@@ -110,6 +110,42 @@ body {
   pointer-events: none;
   background-repeat: repeat;
   image-rendering: pixelated;
+  opacity: 0;
+}
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.sheet-run {
+  position: absolute;
+  background: #e9e2d2;
+  transform: scaleX(0);
+  transform-origin: left top;
+}
+
+.sheet-run.is-vertical {
+  transform: scaleY(0);
+  transform-origin: center top;
+}
+
+.sheet-cell {
+  position: absolute;
+  background: #e1d3af;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pixel-grid,
+  .sheet-run,
+  .sheet-cell {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .mast {

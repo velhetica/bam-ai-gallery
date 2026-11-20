@@ -186,7 +186,7 @@ export function createExhibition(canvas, { reduced, compact }) {
     } else {
       rig.position.set(0.15, 0.02, 0);
       rig.scale.setScalar(1);
-      heroRig.position.set(1.15, -1.15, 0);
+      heroRig.position.set(0.85, -0.42, 0);
       heroRig.scale.setScalar(1);
       camera.fov = 32;
     }
@@ -312,10 +312,75 @@ export function createExhibition(canvas, { reduced, compact }) {
     });
   }
 
-  function render() {
+  const projector = new THREE.Vector3();
+
+  function updateCamera() {
     sampleCamera(roomFloat, view, isCompact);
     camera.position.set(view.px, view.py, view.pz);
     camera.lookAt(view.lx, view.ly, 0);
+    heroRig.updateMatrixWorld(true);
+  }
+
+  function projectPoints(points) {
+    const width = canvas.clientWidth || window.innerWidth;
+    const height = canvas.clientHeight || window.innerHeight;
+    const projected = [];
+    for (let i = 0; i < points.length; i += 3) {
+      projector.set(points[i], points[i + 1], points[i + 2]);
+      projector.applyMatrix4(heroRig.matrixWorld);
+      projector.project(camera);
+      projected.push({
+        x: (projector.x * 0.5 + 0.5) * width,
+        y: (-projector.y * 0.5 + 0.5) * height,
+      });
+    }
+    return projected;
+  }
+
+  function strokeByRole(role) {
+    return built.find((entry) => entry.stroke.role === role);
+  }
+
+  function rimScreen() {
+    updateCamera();
+    const entry = strokeByRole('rim');
+    if (!entry) return null;
+    const points = projectPoints(entry.stroke.points);
+    return points.reduce(
+      (box, point) => ({
+        minX: Math.min(box.minX, point.x),
+        maxX: Math.max(box.maxX, point.x),
+        minY: Math.min(box.minY, point.y),
+        maxY: Math.max(box.maxY, point.y),
+      }),
+      { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity },
+    );
+  }
+
+  function snapHorizon(targetY) {
+    applyRigShift();
+    const rest = rimScreen();
+    if (!rest || !Number.isFinite(rest.maxY)) return null;
+    if (!Number.isFinite(targetY)) return rest;
+    const y0 = rest.maxY;
+    heroRig.position.y += 0.12;
+    const shifted = rimScreen();
+    const slope = shifted ? (shifted.maxY - y0) / 0.12 : 0;
+    if (!Number.isFinite(slope) || Math.abs(slope) < 0.25) {
+      applyRigShift();
+      return rimScreen();
+    }
+    const delta = Math.max(-56, Math.min(56, targetY - y0));
+    heroRig.position.y = heroRig.position.y - 0.12 + delta / slope;
+    return rimScreen();
+  }
+
+  function rimBounds() {
+    return rimScreen();
+  }
+
+  function render() {
+    updateCamera();
     built.forEach(applyDraw);
     renderer.render(scene, camera);
   }
@@ -336,5 +401,5 @@ export function createExhibition(canvas, { reduced, compact }) {
   setScroll(0);
   render();
 
-  return { setScroll, resize, render, destroy };
+  return { setScroll, resize, render, destroy, snapHorizon, rimBounds };
 }

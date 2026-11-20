@@ -93,74 +93,12 @@ export function createStrokes(compact) {
   push(line(5.45, 0.15, 5.45, 2.2, 3.55, { room: 'persist', width: 1.2 }));
   push(line(4.65, 1.62, 6.55, 1.62, 3.95, { room: 'persist', width: 1.05 }));
 
-  // Hero. One wafer, grazing: grid in the XZ plane, true rim, one inlay.
+  // Hero wafer. The flat ledger grid, the route and the inlay live in the page.
   const cx = 6.15;
   const cz = -0.55;
   const radius = 4.55;
-  const yPlane = 0;
-  const xMin = 3.35;
-  const cell = compact ? 2.15 : 1.48;
-
-  const chord = (fixed, axis) => {
-    const delta = axis === 'z' ? fixed - cz : fixed - cx;
-    const reach = radius * radius - delta * delta;
-    if (reach <= 0.04) return null;
-    const half = Math.sqrt(reach);
-    if (axis === 'z') {
-      const x0 = Math.max(cx - half, xMin);
-      const x1 = cx + half;
-      if (x1 - x0 < 0.7) return null;
-      return [x0, x1];
-    }
-    const z0 = cz - half;
-    const z1 = cz + half;
-    if (z1 - z0 < 0.7) return null;
-    return [z0, z1];
-  };
-
-  const zStops = [];
-  for (let z = cz - radius + cell * 0.5; z <= cz + radius - 0.2; z += cell) zStops.push(z);
-  zStops.sort((a, b) => a - b);
-  zStops.forEach((z, index) => {
-    const span = chord(z, 'z');
-    if (!span) return;
-    const near = (z - (cz - radius)) / (radius * 2);
-    push(
-      seg(span[0], yPlane, z, span[1], yPlane, z, {
-        room: 0,
-        opening: true,
-        at: 0.28 + index * 0.13,
-        dur: 1.05,
-        width: 0.7 + near * 0.28,
-        opacity: 0.28 + near * 0.5,
-        fine: compact ? false : index % 2 === 1 && near < 0.45,
-      }),
-    );
-  });
-
-  const xStops = [];
-  for (let x = Math.max(cx - radius, xMin) + cell * 0.35; x <= cx + radius - 0.15; x += cell) {
-    xStops.push(x);
-  }
-  xStops.forEach((x, index) => {
-    const span = chord(x, 'x');
-    if (!span) return;
-    const near = (x - cx) / radius;
-    const lateral = Math.min(1, Math.max(0, (near + 1) / 2));
-    push(
-      seg(x, yPlane + 0.004, span[0], x, yPlane + 0.004, span[1], {
-        room: 0,
-        opening: true,
-        at: 0.42 + index * 0.13,
-        dur: 1.2,
-        width: 0.68 + lateral * 0.22,
-        opacity: 0.24 + lateral * 0.42,
-      }),
-    );
-  });
-
   const rim = (r, y, a0, a1) => {
-    const steps = Math.max(24, Math.ceil(Math.abs(a1 - a0) / (Math.PI / 72)));
+    const steps = Math.max(28, Math.ceil(Math.abs(a1 - a0) / (Math.PI / 80)));
     const points = [];
     for (let i = 0; i <= steps; i += 1) {
       const a = a0 + ((a1 - a0) * i) / steps;
@@ -175,10 +113,11 @@ export function createStrokes(compact) {
     stroke(rim(radius, 0.012, rimStart, rimEnd), {
       room: 0,
       opening: true,
-      at: 2.55,
-      dur: 1.85,
+      role: 'rim',
+      at: 1.15,
+      dur: 1.7,
       width: 1.05,
-      opacity: 0.9,
+      opacity: 0.92,
     }),
   );
 
@@ -194,8 +133,8 @@ export function createStrokes(compact) {
       seg(px, 0.012, pz, px, 0.012 + len, pz, {
         room: 0,
         opening: true,
-        at: 4.15 + i * 0.07,
-        dur: 0.32,
+        at: 2.65 + i * 0.065,
+        dur: 0.3,
         width: major ? 1.05 : 0.8,
         opacity: major ? 0.92 : 0.62,
         fine: !major,
@@ -203,65 +142,13 @@ export function createStrokes(compact) {
     );
   }
 
-  const traceY = 0.02;
-  const squareX = 7.22;
-  const squareZ = 0.95;
-  const half = 0.2;
-  const route = [
-    [4.55, -2.35, 4.55, -0.85],
-    [4.55, -0.85, 5.85, -0.85],
-    [5.85, -0.85, 5.85, squareZ],
-    [5.85, squareZ, squareX - half, squareZ],
-  ];
-  route.forEach(([x1, z1, x2, z2], index) => {
-    push(
-      seg(x1, traceY, z1, x2, traceY, z2, {
-        room: 0,
-        opening: true,
-        at: 5.15 + index * 0.38,
-        dur: 0.72,
-        width: 1.05,
-        opacity: 0.88,
-      }),
-    );
-  });
-  push(
-    seg(squareX, traceY, squareZ + 2.15, squareX, traceY, squareZ + half, {
-      room: 0,
-      opening: true,
-      at: 6.55,
-      dur: 0.7,
-      width: 1.05,
-      opacity: 0.88,
-    }),
-  );
-
-  const square = [
-    [squareX - half, squareZ - half, squareX + half, squareZ - half],
-    [squareX + half, squareZ - half, squareX + half, squareZ + half],
-    [squareX + half, squareZ + half, squareX - half, squareZ + half],
-    [squareX - half, squareZ + half, squareX - half, squareZ - half],
-  ];
-  square.forEach(([x1, z1, x2, z2], index) => {
-    push(
-      seg(x1, 0.03, z1, x2, 0.03, z2, {
-        room: 0,
-        opening: true,
-        at: 7.15 + index * 0.1,
-        dur: 0.42,
-        width: 1.25,
-        color: BRIGHT,
-        opacity: 1,
-      }),
-    );
-  });
-
   push(
     stroke(rim(radius + 0.045, 0.028, rimStart, rimEnd), {
       room: 0,
       opening: true,
-      at: 7.55,
-      dur: 1.9,
+      role: 'horizon',
+      at: 5.15,
+      dur: 1.75,
       width: 1.65,
       color: BRIGHT,
       opacity: 1,
