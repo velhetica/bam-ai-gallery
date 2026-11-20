@@ -93,16 +93,6 @@ body {
   outline-offset: 4px;
 }
 
-#installation {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
 .grain,
 .rake,
 .ledger {
@@ -214,7 +204,7 @@ body {
   width: 100%;
   height: 100%;
   background: rgba(200, 185, 148, 0.55);
-  transform-origin: left center;
+  transform-origin: right center;
 }
 
 .section-tick,
@@ -413,9 +403,12 @@ h1 {
     opacity: 0;
   }
 
-  .major-rule.is-h,
-  .ledger-cell {
+  .major-rule.is-h {
     transform: scaleX(0);
+  }
+
+  .ledger-cell {
+    clip-path: inset(100% 0 0 100%);
   }
 
   .major-rule.is-v {
@@ -424,6 +417,7 @@ h1 {
 
   .section-rule-bar {
     transform: scaleX(0);
+    transform-origin: right center;
   }
 
   .section-tick,
