@@ -21,8 +21,16 @@ let introDone = false;
 let scheduled = false;
 let mastRule = null;
 let mastDrawn = false;
-let glint = null;
 let breath = 1;
+let bandHeight = 0;
+let deviceEl = null;
+let deviceRect = null;
+let deviceDrawn = false;
+let corner = null;
+let routeLayer = null;
+let activeRoutes = [];
+let lastPulse = 0;
+const SVG_NS = 'http://www.w3.org/2000/svg';
 let headDrift = 0;
 let ambientOn = false;
 let ambientRaf = 0;
@@ -183,8 +191,12 @@ function cellBox(step) {
   const textRight = width < 800 ? width * 0.55 : Math.min(width * 0.46, 720);
   let minCol = Math.ceil((textRight - metrics.originX) / metrics.col);
   if (minCol > maxCol) minCol = maxCol;
-  const startCol = Math.max(minCol, maxCol - (maxCol > minCol + 1 ? 1 : 0));
-  const startRow = Math.min(maxRow - 1, Math.max(1, baseRow));
+  const startCol = corner
+    ? Math.round((corner.left - metrics.originX) / metrics.col)
+    : Math.max(minCol, maxCol - (maxCol > minCol + 1 ? 1 : 0));
+  const startRow = corner
+    ? Math.round(corner.top / metrics.row)
+    : Math.min(maxRow - 1, Math.max(1, baseRow));
   const steps = [
     [0, 0],
     [-1, 0],
@@ -231,6 +243,7 @@ function placeCell(step, animate) {
 }
 
 function build() {
+  document.documentElement.classList.toggle('is-narrow', window.innerWidth < 768);
   metrics = gridMetrics();
   const width = window.innerWidth;
   const height = window.innerHeight;
@@ -281,27 +294,128 @@ function build() {
     }
   });
 
-  ledger.replaceChildren(base, accent, float);
+  ledger.replaceChildren(base, accent);
+  document.body.append(float);
   headIndex = -1;
 
-  const markBottom = (wordmark?.getBoundingClientRect().bottom || 48) + 12;
-  baseRow = Math.max(1, Math.ceil(markBottom / metrics.row));
+  const markBottom = (wordmark?.getBoundingClientRect().bottom || 48) + (window.innerWidth < 768 ? 10 : 14);
+  let rows = Math.max(1, Math.ceil(markBottom / metrics.row));
+  while (rows * metrics.row < markBottom) rows += 1;
+  bandHeight = rows * metrics.row;
+  baseRow = Math.max(1, rows);
+  layoutStage();
   placeCell(introDone ? plateIndex(window.scrollY) : 0, false);
   buildMastRule();
-  ensureGlint();
+  ensureRouteLayer();
+  placeBranches();
+  applyBand();
   return baseLines;
 }
 
-function ruleColumn() {
+function applyBand() {
+  let band = document.querySelector('.mast-band');
+  if (!band) {
+    band = document.createElement('div');
+    band.className = 'mast-band';
+    band.setAttribute('aria-hidden', 'true');
+    document.body.insertBefore(band, document.querySelector('.mast'));
+  }
+  band.style.height = `${bandHeight}px`;
+  const mask = `linear-gradient(to bottom, transparent 0 ${bandHeight}px, #000 ${bandHeight}px)`;
+  ledger.style.webkitMaskImage = mask;
+  ledger.style.maskImage = mask;
+}
+
+function layoutStage() {
   const width = window.innerWidth;
-  const textRight = document.querySelector('.room-hero .placard')?.getBoundingClientRect().right ?? width * 0.46;
-  const cols = [];
-  for (let x = metrics.originX; x <= width - metrics.line; x += metrics.col) cols.push(snap(x));
-  const cellX = cellBox(0).left;
-  const open = cols.filter((x) => x > textRight + 4 && Math.abs(x - cellX) > metrics.col * 0.45);
-  if (!open.length) return snap(metrics.originX);
-  const target = width * 0.68;
-  return open.reduce((best, x) => (Math.abs(x - target) < Math.abs(best - target) ? x : best));
+  const narrow = width < 768;
+  const textRight = document.querySelector('.room-hero .placard')?.getBoundingClientRect().right ?? width * 0.42;
+  let ruleX;
+  if (narrow) {
+    ruleX = snap(metrics.originX - metrics.col);
+    if (ruleX < 2) ruleX = snap(metrics.originX);
+  } else {
+    const minX = textRight + metrics.col * 0.35;
+    ruleX = metrics.originX;
+    for (let x = metrics.originX; x < width - metrics.col; x += metrics.col) {
+      if (x >= minX) {
+        ruleX = snap(x);
+        break;
+      }
+    }
+  }
+
+  let span = narrow ? 4 : 6;
+  const minSpan = narrow ? 3 : 5;
+  let devW = span * metrics.col;
+  let devH = Math.max(metrics.row * 3, Math.round((devW * 0.75) / metrics.row) * metrics.row);
+  let devLeft = narrow
+    ? metrics.originX + Math.floor((width - devW - metrics.col - metrics.originX) / metrics.col) * metrics.col
+    : ruleX + metrics.col;
+  while (span > minSpan && (devLeft < ruleX || devLeft + devW > width - 2)) {
+    span -= 1;
+    devW = span * metrics.col;
+    devH = Math.max(metrics.row * 3, Math.round((devW * 0.75) / metrics.row) * metrics.row);
+    devLeft = narrow
+      ? metrics.originX + Math.floor((width - devW - metrics.col - metrics.originX) / metrics.col) * metrics.col
+      : ruleX + metrics.col;
+  }
+  devLeft = snap(Math.max(metrics.originX, devLeft));
+  const devTop = snap(bandHeight);
+  deviceRect = { left: devLeft, top: devTop, width: devW, height: devH, ruleX };
+  corner = { left: devLeft + devW - metrics.col, top: devTop };
+  mountDevice();
+}
+
+function mountDevice() {
+  if (!deviceEl) {
+    deviceEl = document.createElement('div');
+    deviceEl.className = 'device';
+    deviceEl.dataset.device = 'ipad';
+    const body = document.createElement('div');
+    body.className = 'device-body';
+    const screen = document.createElement('div');
+    screen.className = 'device-screen';
+    const slot = document.createElement('div');
+    slot.className = 'device-slot';
+    screen.append(slot);
+    body.append(screen);
+    const trace = document.createElementNS(SVG_NS, 'svg');
+    trace.setAttribute('class', 'device-trace');
+    const path = document.createElementNS(SVG_NS, 'path');
+    trace.append(path);
+    deviceEl.append(body, trace);
+    deviceEl._body = body;
+    deviceEl._screen = screen;
+    deviceEl._slot = slot;
+    deviceEl._path = path;
+  }
+  const { left, top, width, height } = deviceRect;
+  deviceEl.style.left = `${left}px`;
+  deviceEl.style.top = `${top}px`;
+  deviceEl.style.width = `${width}px`;
+  deviceEl.style.height = `${height}px`;
+  const bezel = window.innerWidth < 768 ? 8 : 12;
+  const radius = Math.min(window.innerWidth < 768 ? 10 : 14, width / 2 - 2, height / 2 - 2);
+  deviceEl._body.style.borderRadius = `${radius}px`;
+  deviceEl._screen.style.inset = `${bezel}px`;
+  deviceEl._screen.style.borderRadius = `${Math.max(4, radius - 6)}px`;
+  deviceEl._screen.style.backgroundSize = `${metrics.col}px ${metrics.row}px`;
+  deviceEl._screen.style.backgroundPosition = `${metrics.col - bezel}px ${metrics.row - bezel}px`;
+  deviceEl._screen.style.backgroundImage = `linear-gradient(to right, rgba(233,226,210,0.045) 1px, transparent 1px), linear-gradient(to bottom, rgba(233,226,210,0.045) 1px, transparent 1px)`;
+  const path = deviceEl._path;
+  const r = radius;
+  path.setAttribute('d', `M ${width} ${r} V ${height - r} Q ${width} ${height} ${width - r} ${height} H ${r} Q 0 ${height} 0 ${height - r} V ${r} Q 0 0 ${r} 0 H ${width - r} Q ${width} 0 ${width} ${r}`);
+  path.setAttribute('stroke-width', `${metrics.line}`);
+  const svg = path.ownerSVGElement;
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('width', `${width}`);
+  svg.setAttribute('height', `${height}`);
+  document.querySelector('#entrance').append(deviceEl);
+  if (reduced || deviceDrawn) {
+    deviceEl._body.style.clipPath = 'none';
+    path.style.opacity = '0';
+  }
 }
 
 function buildMastRule() {
@@ -309,38 +423,56 @@ function buildMastRule() {
     mastRule = document.createElement('div');
     mastRule.className = 'mast-rule';
     mastRule.setAttribute('aria-hidden', 'true');
-    const bar = document.createElement('div');
-    bar.className = 'mast-rule-bar';
-    mastRule.append(bar);
+    const track = document.createElement('div');
+    track.className = 'gauge-track';
+    const fill = document.createElement('div');
+    fill.className = 'gauge-fill';
+    const mark = document.createElement('div');
+    mark.className = 'gauge-mark';
+    mark.innerHTML = '<i class="gauge-mark-tick"></i><i class="gauge-mark-square"></i>';
+    mastRule.append(track, fill, mark);
+    mastRule._track = track;
+    mastRule._fill = fill;
+    mastRule._mark = mark;
   }
   mastRule.querySelectorAll('.mast-tick').forEach((tick) => tick.remove());
-  const height = window.innerHeight;
-  const x = ruleColumn();
-  const alongDatum = Math.abs(x - metrics.originX) < 1;
-  const minor = metrics.col / 6;
-  const count = Math.floor(height / minor);
+  const height = window.innerHeight - bandHeight;
+  const ruleX = deviceRect.ruleX;
+  const ticksGoLeft = ruleX >= metrics.originX;
+  const minor = Math.max(8, metrics.col / 6);
+  const count = Math.max(1, Math.floor(height / minor));
   const ticks = [];
   for (let i = 1; i <= count; i += 1) {
     const tick = document.createElement('div');
     tick.className = 'mast-tick';
     const y = snap(i * minor);
     const tickW = i % 6 === 0 ? 11 : 5;
-    tick.style.left = alongDatum ? `${-tickW}px` : `${metrics.line}px`;
     tick.style.top = `${y}px`;
     tick.style.width = `${tickW}px`;
     tick.style.height = `${metrics.line}px`;
+    tick.style.left = ticksGoLeft ? `${-tickW}px` : `${metrics.line}px`;
     mastRule.append(tick);
-    ticks.push({ tick, at: y / height });
+    ticks.push({ tick, at: y / Math.max(height, 1) });
   }
   mastRule._ticks = ticks;
-  mastRule.style.left = `${x}px`;
-  mastRule.style.top = '0px';
+  mastRule.style.left = `${ruleX}px`;
+  mastRule.style.top = `${bandHeight}px`;
   mastRule.style.width = `${metrics.line}px`;
   mastRule.style.height = `${height}px`;
+  const square = 6;
+  const markTick = mastRule.querySelector('.gauge-mark-tick');
+  const markSquare = mastRule.querySelector('.gauge-mark-square');
+  markTick.style.width = `${metrics.col * 0.22}px`;
+  markTick.style.height = `${metrics.line}px`;
+  markTick.style.left = ticksGoLeft ? `${-metrics.col * 0.22}px` : '0px';
+  markSquare.style.width = `${square}px`;
+  markSquare.style.height = `${square}px`;
+  markSquare.style.left = `${-square / 2}px`;
+  markSquare.style.top = `${-square / 2}px`;
   ledger.append(mastRule);
   if (reduced || mastDrawn) {
-    const bar = mastRule.querySelector('.mast-rule-bar');
-    if (bar) bar.style.transform = 'none';
+    mastRule._track.style.transform = 'none';
+    mastRule._mark.style.opacity = '1';
     ticks.forEach(({ tick }) => {
       tick.style.opacity = '1';
     });
@@ -350,42 +482,114 @@ function buildMastRule() {
 function drawMast(timeline, start) {
   if (!mastRule || mastDrawn) return;
   mastDrawn = true;
-  const bar = mastRule.querySelector('.mast-rule-bar');
   const ticks = mastRule._ticks || [];
   if (reduced || !timeline) {
-    if (bar) bar.style.transform = 'none';
+    mastRule._track.style.transform = 'none';
+    mastRule._mark.style.opacity = '1';
     ticks.forEach(({ tick }) => {
       tick.style.opacity = '1';
     });
     return;
   }
-  timeline.fromTo(bar, { scaleY: 0 }, { scaleY: 1, duration: 1.05, ease: 'power2.inOut' }, start);
+  timeline.fromTo(mastRule._track, { scaleY: 0 }, { scaleY: 1, duration: 1.05, ease: 'power2.inOut' }, start);
   ticks.forEach(({ tick, at }) => {
     timeline.fromTo(tick, { opacity: 0 }, { opacity: 1, duration: 0.04, ease: 'none' }, start + at * 1.05);
   });
+  timeline.set(mastRule._mark, { opacity: 1 }, start + 0.2);
 }
 
-function ensureGlint() {
-  if (!glint) {
-    glint = document.createElement('div');
-    glint.className = 'sheet-glint';
-    glint.setAttribute('aria-hidden', 'true');
+function mountBranches() {
+  rooms.forEach((section) => {
+    if (section._branch) return;
+    const branch = document.createElement('div');
+    branch.className = 'gauge-branch';
+    const bar = document.createElement('div');
+    bar.className = 'gauge-branch-bar';
+    branch.append(bar);
+    section.append(branch);
+    section._branch = { branch, bar, drawn: false };
+  });
+}
+
+function placeBranches() {
+  const ruleX = deviceRect?.ruleX ?? metrics.originX;
+  const scrollY = window.scrollY;
+  rooms.forEach((section) => {
+    const pack = section._branch;
+    const title = section.querySelector('h1, .plate, h2');
+    if (!pack || !title) return;
+    const y = title.getBoundingClientRect().top + scrollY - (section.getBoundingClientRect().top + scrollY);
+    const from = Math.min(ruleX, metrics.originX);
+    const width = Math.abs(ruleX - metrics.originX);
+    pack.branch.style.left = `${from}px`;
+    pack.branch.style.width = `${Math.max(metrics.col, width)}px`;
+    pack.branch.style.top = `${y}px`;
+    pack.branch.style.height = `${metrics.line}px`;
+    pack.bar.style.transformOrigin = ruleX >= metrics.originX ? 'right center' : 'left center';
+  });
+}
+
+function drawBranch(section, timeline, start) {
+  const pack = section?._branch;
+  if (!pack || pack.drawn) return;
+  pack.drawn = true;
+  if (reduced || !timeline) {
+    pack.bar.style.transform = 'none';
+    return;
   }
-  ledger.append(glint);
-  glint.style.height = `${metrics.line}px`;
-  glint.style.width = `${Math.max(16, metrics.col * 0.34)}px`;
-  return glint;
+  const at = start || 0;
+  timeline.fromTo(pack.bar, { scaleX: 0 }, { scaleX: 1, duration: 0.7, ease: 'power1.out' }, at);
+}
+
+function drawDevice(timeline, start) {
+  if (!deviceEl || deviceDrawn) return;
+  deviceDrawn = true;
+  const path = deviceEl._path;
+  const body = deviceEl._body;
+  if (reduced || !timeline) {
+    body.style.clipPath = 'none';
+    path.style.opacity = '0';
+    return;
+  }
+  const length = path.getTotalLength();
+  gsap.set(path, { strokeDasharray: length, strokeDashoffset: length, opacity: 1 });
+  timeline.to(path, { strokeDashoffset: 0, duration: 0.9, ease: 'power1.out' }, start);
+  timeline.to(body, { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.5, ease: 'power2.out' }, start + 0.7);
+  timeline.to(path, { opacity: 0, duration: 0.25, ease: 'none' }, start + 1.15);
 }
 
 function circleTarget(progress) {
   const w = window.innerWidth;
   const h = window.innerHeight;
   const swing = Math.sin(Math.PI * progress);
+  if (w < 768) {
+    const radius = Math.min(w, h) * (0.34 + 0.05 * swing);
+    return {
+      x: w + w * 0.02,
+      y: bandHeight - radius * 0.72 + progress * h * 0.9,
+      radius,
+    };
+  }
   return {
     x: w + Math.min(w * 0.08, 120) - swing * w * 0.16,
-    y: -h * 0.16 + progress * h * 1.34,
-    radius: h * (0.74 + 0.14 * swing),
+    y: bandHeight - h * 0.22 + progress * h * 1.2,
+    radius: h * (0.7 + 0.12 * swing),
   };
+}
+
+function applyGauge(progress) {
+  if (!mastRule) return;
+  const span = Math.max(1, window.innerHeight - bandHeight);
+  const filled = progress * span;
+  mastRule._fill.style.height = `${filled}px`;
+  const row = Math.max(0, Math.round(filled / metrics.row) * metrics.row);
+  const y = Math.min(span - metrics.line, row);
+  mastRule._mark.style.top = `${y}px`;
+  (mastRule._ticks || []).forEach(({ tick }) => {
+    const top = parseFloat(tick.style.top);
+    tick.classList.toggle('is-lit', top <= y + 0.5);
+  });
+  mastRule._pulseY = y;
 }
 
 function applyCircle(progress) {
@@ -431,6 +635,7 @@ function applyScroll() {
   const progress = scrollProgress();
   applyCircle(progress);
   applyHead(progress);
+  applyGauge(progress);
   if (!introDone) return;
   const next = plateIndex(window.scrollY);
   if (next === plate) return;
@@ -461,11 +666,15 @@ function showType() {
     line.style.opacity = '1';
   });
   if (mastRule) {
-    const bar = mastRule.querySelector('.mast-rule-bar');
-    if (bar) bar.style.transform = 'none';
+    if (mastRule._track) mastRule._track.style.transform = 'none';
+    if (mastRule._mark) mastRule._mark.style.opacity = '1';
     mastRule.querySelectorAll('.mast-tick').forEach((tick) => {
       tick.style.opacity = '1';
     });
+  }
+  if (deviceEl) {
+    deviceEl._body.style.clipPath = 'none';
+    deviceEl._path.style.opacity = '0';
   }
 }
 
@@ -543,29 +752,134 @@ function rand(min, max) {
   return min + Math.random() * (max - min);
 }
 
-function playGlint() {
-  if (reduced || document.hidden || !metrics || !glint) return;
-  const rows = [];
-  for (let y = metrics.row; y < window.innerHeight - metrics.row; y += metrics.row) rows.push(snap(y));
-  if (!rows.length) return;
-  const y = rows[Math.floor(Math.random() * rows.length)];
-  glint.style.top = `${y}px`;
-  glint.style.height = `${metrics.line}px`;
-  glint.style.width = `${Math.max(16, metrics.col * 0.34)}px`;
-  glint.style.opacity = '1';
-  gsap.fromTo(
-    glint,
-    { x: window.innerWidth },
-    {
-      x: metrics.originX,
-      duration: 1.5,
-      ease: 'power1.out',
-      overwrite: 'auto',
-      onComplete: () => {
-        glint.style.opacity = '0';
-      },
+function ensureRouteLayer() {
+  if (!routeLayer) {
+    routeLayer = document.createElementNS(SVG_NS, 'svg');
+    routeLayer.setAttribute('class', 'route-layer');
+  }
+  routeLayer.setAttribute('width', `${window.innerWidth}`);
+  routeLayer.setAttribute('height', `${window.innerHeight}`);
+  routeLayer.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+  ledger.append(routeLayer);
+}
+
+function crossesDevice(x1, y1, x2, y2) {
+  if (!deviceRect) return false;
+  const bezel = window.innerWidth < 768 ? 8 : 12;
+  const rect = {
+    l: deviceRect.left + bezel,
+    t: deviceRect.top + bezel,
+    r: deviceRect.left + deviceRect.width - bezel,
+    b: deviceRect.top + deviceRect.height - bezel,
+  };
+  const minX = Math.min(x1, x2);
+  const maxX = Math.max(x1, x2);
+  const minY = Math.min(y1, y2);
+  const maxY = Math.max(y1, y2);
+  return maxX > rect.l && minX < rect.r && maxY > rect.t && minY < rect.b;
+}
+
+function routePoints() {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const textRight = document.querySelector('.room-hero .placard')?.getBoundingClientRect().right ?? width * 0.4;
+  const xs = [];
+  const ys = [];
+  for (let x = metrics.originX; x <= width - metrics.line; x += metrics.col) {
+    if (x > textRight + metrics.col * 0.4) xs.push(snap(x));
+  }
+  for (let y = bandHeight; y <= height - metrics.row; y += metrics.row) ys.push(snap(y));
+  if (xs.length < 2 || ys.length < 2) return null;
+  const kind = ['right', 'tr', 'br'][Math.floor(Math.random() * 3)];
+  let x = xs[xs.length - 1];
+  let y = ys[Math.floor(Math.random() * ys.length)];
+  if (kind === 'tr') {
+    x = xs[Math.max(0, xs.length - 1 - Math.floor(Math.random() * Math.min(3, xs.length)))];
+    y = ys[0];
+  } else if (kind === 'br') {
+    x = xs[Math.max(0, xs.length - 1 - Math.floor(Math.random() * Math.min(3, xs.length)))];
+    y = ys[ys.length - 1];
+  }
+  const points = [{ x, y }];
+  let horizontal = kind === 'right' || Math.random() < 0.5;
+  if (kind !== 'right') horizontal = kind === 'tr' ? false : Math.random() < 0.5;
+  const turns = 1 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < turns; i += 1) {
+    if (horizontal) {
+      const options = xs.filter((nx) => nx !== x && !crossesDevice(x, y, nx, y));
+      if (!options.length) break;
+      x = options[Math.floor(Math.random() * options.length)];
+    } else {
+      const options = ys.filter((ny) => ny !== y && !crossesDevice(x, y, x, ny));
+      if (!options.length) break;
+      y = options[Math.floor(Math.random() * options.length)];
+    }
+    points.push({ x, y });
+    horizontal = !horizontal;
+  }
+  return points.length > 1 ? points : null;
+}
+
+function spawnRoute() {
+  if (reduced || document.hidden || !routeLayer || activeRoutes.length >= 2) return;
+  const points = routePoints();
+  if (!points) return;
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', points.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' '));
+  path.setAttribute('stroke-width', `${metrics.line}`);
+  const end = points[points.length - 1];
+  const node = document.createElementNS(SVG_NS, 'rect');
+  const size = 5;
+  node.setAttribute('x', `${end.x - size / 2}`);
+  node.setAttribute('y', `${end.y - size / 2}`);
+  node.setAttribute('width', `${size}`);
+  node.setAttribute('height', `${size}`);
+  node.setAttribute('opacity', '0');
+  routeLayer.append(path, node);
+  const length = path.getTotalLength();
+  const speed = 150 + Math.random() * 100;
+  const duration = Math.max(0.6, length / speed);
+  gsap.set(path, { strokeDasharray: length, strokeDashoffset: length });
+  const state = { killed: false };
+  const kill = () => {
+    state.killed = true;
+    gsap.killTweensOf([path, node]);
+    path.remove();
+    node.remove();
+    activeRoutes = activeRoutes.filter((item) => item !== state);
+  };
+  state.kill = kill;
+  activeRoutes.push(state);
+  gsap.to(path, {
+    strokeDashoffset: 0,
+    duration,
+    ease: 'none',
+    onComplete: () => {
+      if (state.killed) return;
+      gsap.fromTo(
+        node,
+        { opacity: 0.4 },
+        {
+          opacity: 1,
+          duration: 1,
+          ease: 'sine.inOut',
+          yoyo: true,
+          repeat: 5,
+          onComplete: () => {
+            if (state.killed) return;
+            gsap.to(path, {
+              strokeDashoffset: length,
+              duration: Math.max(0.45, duration * 0.75),
+              ease: 'power1.in',
+              onComplete: () => {
+                gsap.to(node, { opacity: 0, duration: 0.2, onComplete: kill });
+              },
+            });
+          },
+        },
+      );
     },
-  );
+  });
 }
 
 function nudgeCell() {
@@ -596,9 +910,9 @@ function nudgeCell() {
 function scheduleGlint() {
   clearTimeout(glintTimer);
   glintTimer = window.setTimeout(() => {
-    if (!document.hidden) playGlint();
+    if (!document.hidden) spawnRoute();
     if (ambientOn) scheduleGlint();
-  }, rand(6000, 10000));
+  }, rand(6000, 9000));
 }
 
 function scheduleNudge() {
@@ -611,12 +925,25 @@ function scheduleNudge() {
 
 function ambientFrame(now) {
   if (!ambientOn || document.hidden) return;
-  breath = 1 + 0.016 * Math.sin((now / 14000) * Math.PI * 2);
+  breath = 1 + 0.03 * Math.sin((now / 14000) * Math.PI * 2);
   if (now - lastHeadStep >= 4500) {
     lastHeadStep = now;
     headDrift = (headDrift + 1) % Math.max(1, headRows.length);
     headIndex = -1;
     applyHead(scrollProgress());
+  }
+  if (now - lastPulse >= 4000 && mastRule) {
+    lastPulse = now;
+    const y = mastRule._pulseY ?? 0;
+    const nearest = (mastRule._ticks || []).reduce((best, item) => {
+      const top = parseFloat(item.tick.style.top);
+      if (!best) return item;
+      return Math.abs(top - y) < Math.abs(parseFloat(best.tick.style.top) - y) ? item : best;
+    }, null);
+    if (nearest) {
+      nearest.tick.classList.add('is-pulse');
+      window.setTimeout(() => nearest.tick.classList.remove('is-pulse'), 220);
+    }
   }
   applyCircle(scrollProgress());
   ambientRaf = requestAnimationFrame(ambientFrame);
@@ -636,12 +963,16 @@ function pauseAmbient() {
   cancelAnimationFrame(ambientRaf);
   clearTimeout(glintTimer);
   clearTimeout(cellTimer);
+  activeRoutes.forEach((route) => route.kill());
+  activeRoutes = [];
 }
 
 function playIntro(lines) {
   const intro = gsap.timeline();
   intro.fromTo(lines, { opacity: 0 }, { opacity: 1, duration: 0.45, ease: 'power2.out' }, 0);
   drawMast(intro, 0.35);
+  drawDevice(intro, 0.55);
+  drawBranch(document.querySelector('#entrance'), intro, 0.9);
   placeCell(0, false);
   intro.fromTo(
     cell,
@@ -681,7 +1012,10 @@ function layout() {
     reveal = 1;
     introDone = true;
     showType();
-    rooms.forEach((section) => drawSectionRule(section, { immediate: true }));
+    rooms.forEach((section) => {
+      drawSectionRule(section, { immediate: true });
+      drawBranch(section);
+    });
     plate = plateIndex(window.scrollY);
     placeCell(plate, false);
     applyScroll();
@@ -694,10 +1028,251 @@ function revealPlacard(section) {
   plotSection(section);
 }
 
+function prepareJourney(section) {
+  section.querySelectorAll('.journey-svg path[data-draw]').forEach((path) => {
+    const length = path.getTotalLength();
+    if (!length) return;
+    path.style.strokeDasharray = `${length}`;
+    path.style.strokeDashoffset = reduced ? '0' : `${length}`;
+  });
+  if (reduced) {
+    section.querySelectorAll('.node-paid, .step-cell').forEach((el) => {
+      el.style.opacity = '1';
+    });
+    section.querySelectorAll('.step').forEach((step) => {
+      step.style.setProperty('--drawn', '1');
+    });
+  }
+}
+
+function flowSvg(section) {
+  return [...section.querySelectorAll('.journey-svg')].find((item) => item.getClientRects().length) || null;
+}
+
+function drawJourney(section, tl, start) {
+  const svg = flowSvg(section);
+  if (!svg) return;
+  const paths = [...svg.querySelectorAll('path[data-draw]')];
+  paths.forEach((path, index) => {
+    const length = path.getTotalLength() || 1;
+    path.style.strokeDasharray = `${length}`;
+    tl.fromTo(path, { strokeDashoffset: length }, { strokeDashoffset: 0, duration: path.dataset.draw === 'curve' ? 1.15 : 0.85, ease: 'power1.out' }, start + index * 0.16);
+  });
+}
+
+let moneyOn = false;
+let moneyRaf = 0;
+let moneyStamp = 0;
+let moneySpawn = 0;
+let moneySerial = 0;
+const moneyPackets = [];
+
+function flowPaths(svg) {
+  const main = svg.querySelector('[data-draw="main"]');
+  const leak = svg.querySelector('[data-draw="leak"]');
+  const curve = svg.querySelector('[data-draw="curve"]');
+  if (!main || !leak || !curve) return null;
+  const mainLen = main.getTotalLength();
+  const nearest = (target) => {
+    let at = 0;
+    let best = Infinity;
+    for (let i = 0; i <= 64; i += 1) {
+      const d = (mainLen * i) / 64;
+      const point = main.getPointAtLength(d);
+      const dx = point.x - target.x;
+      const dy = point.y - target.y;
+      const dist = dx * dx + dy * dy;
+      if (dist < best) {
+        best = dist;
+        at = d;
+      }
+    }
+    return at;
+  };
+  return {
+    svg,
+    main,
+    leak,
+    curve,
+    mainLen,
+    leakLen: leak.getTotalLength(),
+    curveLen: curve.getTotalLength(),
+    join: nearest(leak.getPointAtLength(0)),
+    rejoin: nearest(curve.getPointAtLength(curve.getTotalLength())),
+  };
+}
+
+function placePacket(el, path, distance, svg) {
+  const point = path.getPointAtLength(Math.max(0, Math.min(distance, path.getTotalLength())));
+  const box = svg.viewBox.baseVal;
+  el.style.left = `${(point.x / box.width) * 100}%`;
+  el.style.top = `${(point.y / box.height) * 100}%`;
+}
+
+function spawnPacket(host, divert, appeal) {
+  const el = document.createElement('i');
+  el.className = 'packet';
+  host.append(el);
+  moneyPackets.push({ el, leg: 'main', dist: 0, divert, appeal, hold: 0 });
+}
+
+function moneyFrame(now) {
+  if (!moneyOn) return;
+  moneyRaf = requestAnimationFrame(moneyFrame);
+  if (document.hidden) return;
+  const section = document.querySelector('.story-industry');
+  const svg = section && flowSvg(section);
+  const flow = svg && flowPaths(svg);
+  const host = svg && svg.parentElement.querySelector('.packets');
+  if (!flow || !host) return;
+  const dt = Math.min(0.05, (now - moneyStamp) / 1000);
+  moneyStamp = now;
+  const scale = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width || 1;
+  const step = (72 / scale) * dt;
+  if (now - moneySpawn > 1100) {
+    moneySpawn = now;
+    moneySerial += 1;
+    spawnPacket(host, moneySerial % 5 === 0, moneySerial % 40 === 0);
+  }
+  for (let i = moneyPackets.length - 1; i >= 0; i -= 1) {
+    const packet = moneyPackets[i];
+    if (packet.hold) {
+      packet.hold -= dt;
+      if (packet.hold <= 0) {
+        packet.el.remove();
+        moneyPackets.splice(i, 1);
+      }
+      continue;
+    }
+    packet.dist += step;
+    if (packet.leg === 'main' && packet.divert && packet.dist >= flow.join && packet.dist - step < flow.join) {
+      packet.leg = 'leak';
+      packet.dist = 0;
+    }
+    const path = packet.leg === 'leak' ? flow.leak : packet.leg === 'curve' ? flow.curve : flow.main;
+    const length = packet.leg === 'leak' ? flow.leakLen : packet.leg === 'curve' ? flow.curveLen : flow.mainLen;
+    if (packet.dist >= length) {
+      if (packet.leg === 'leak' && packet.appeal) {
+        packet.leg = 'curve';
+        packet.dist = 0;
+        placePacket(packet.el, flow.curve, 0, svg);
+        continue;
+      }
+      if (packet.leg === 'curve') {
+        packet.leg = 'main';
+        packet.dist = flow.rejoin + 6;
+        packet.divert = false;
+        placePacket(packet.el, flow.main, packet.dist, svg);
+        continue;
+      }
+      if (packet.leg === 'leak') {
+        packet.el.classList.add('is-dim');
+        packet.hold = 1.6;
+        placePacket(packet.el, flow.leak, length, svg);
+        continue;
+      }
+      packet.el.remove();
+      moneyPackets.splice(i, 1);
+      continue;
+    }
+    placePacket(packet.el, path, packet.dist, svg);
+  }
+}
+
+function startMoney() {
+  if (reduced || moneyOn) return;
+  moneyOn = true;
+  moneyStamp = performance.now();
+  moneySpawn = moneyStamp - 1200;
+  moneyRaf = requestAnimationFrame(moneyFrame);
+}
+
+function stopMoney() {
+  moneyOn = false;
+  cancelAnimationFrame(moneyRaf);
+}
+
+function freezePackets(section) {
+  const svg = flowSvg(section);
+  const host = svg && svg.parentElement.querySelector('.packets');
+  const flow = svg && flowPaths(svg);
+  if (!host || !flow) return;
+  host.replaceChildren();
+  [0.15, 0.4, 0.7].forEach((at) => {
+    const el = document.createElement('i');
+    el.className = 'packet';
+    host.append(el);
+    placePacket(el, flow.main, flow.mainLen * at, svg);
+  });
+  const dim = document.createElement('i');
+  dim.className = 'packet is-dim';
+  host.append(dim);
+  placePacket(dim, flow.leak, flow.leakLen, svg);
+}
+
+function enterIndustry(section) {
+  if (section.dataset.played) return;
+  section.dataset.played = '1';
+  if (reduced) {
+    freezePackets(section);
+    return;
+  }
+  const tl = gsap.timeline();
+  drawJourney(section, tl, 0);
+  [...section.querySelectorAll('.line')].forEach((line, index) => {
+    plotInk(line, tl, 0.2 + index * 0.12, line.closest('.story-title') ? 0.8 : 0.62);
+  });
+  tl.add(() => {
+    section.querySelectorAll('.journey-svg path[data-draw]').forEach((path) => {
+      const length = path.getTotalLength();
+      if (!length) return;
+      path.style.strokeDasharray = `${length}`;
+      path.style.strokeDashoffset = '0';
+    });
+    startMoney();
+  });
+}
+
+function enterWorks(section) {
+  if (section.dataset.played) return;
+  section.dataset.played = '1';
+  const steps = [...section.querySelectorAll('.step')];
+  const marker = section.querySelector('.step-cell');
+  if (reduced) return;
+  const tl = gsap.timeline();
+  steps.forEach((step, index) => {
+    const rule = { value: 0 };
+    tl.to(rule, {
+      value: 1,
+      duration: 0.55,
+      ease: 'power1.out',
+      onUpdate: () => step.style.setProperty('--rule', rule.value),
+    }, index * 0.12);
+    const line = step.querySelector('.line');
+    if (line) plotInk(line, tl, 0.08 + index * 0.12, 0.62);
+  });
+  const eyebrow = section.querySelector('.eyebrow .line');
+  if (eyebrow) plotInk(eyebrow, tl, 0, 0.55);
+  if (!marker || !steps.length) return;
+  steps.forEach((step, index) => {
+    tl.to(marker, { top: step.offsetTop, duration: 0.26, ease: 'power2.out' }, 0.35 + index * 0.28);
+  });
+}
+
+function alignPhoto() {
+  const fig = document.querySelector('.works-photo');
+  if (!fig) return;
+  fig.style.width = '';
+  fig.style.marginLeft = '';
+}
+
 function boot() {
   paintGrain();
   mountSectionRules();
+  mountBranches();
   layout();
+  alignPhoto();
+  document.querySelectorAll('.story-industry').forEach(prepareJourney);
   rooms.forEach((section) => {
     if (section.classList.contains('room-hero')) return;
     ScrollTrigger.create({
@@ -706,14 +1281,44 @@ function boot() {
       once: true,
       onEnter: () => {
         drawSectionRule(section);
+        drawBranch(section, gsap.timeline(), 0);
         revealPlacard(section);
       },
     });
   });
+  document.querySelectorAll('.story-industry').forEach((section) => {
+    if (reduced) {
+      enterIndustry(section);
+      return;
+    }
+    ScrollTrigger.create({
+      trigger: section,
+      start: 'top 72%',
+      once: true,
+      onEnter: () => enterIndustry(section),
+    });
+  });
+  document.querySelectorAll('.story-works').forEach((section) => {
+    if (reduced) {
+      enterWorks(section);
+      return;
+    }
+    ScrollTrigger.create({
+      trigger: section,
+      start: 'top 72%',
+      once: true,
+      onEnter: () => enterWorks(section),
+    });
+  });
   if (!reduced) window.addEventListener('scroll', onScroll, { passive: true });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) pauseAmbient();
-    else if (!reduced && introDone) startAmbient();
+    if (document.hidden) {
+      pauseAmbient();
+      stopMoney();
+    } else if (!reduced) {
+      if (introDone) startAmbient();
+      if (document.querySelector('.story-industry')?.dataset.played) startMoney();
+    }
   });
   ScrollTrigger.refresh();
 }
@@ -729,6 +1334,7 @@ window.addEventListener('resize', () => {
     plate = plateIndex(window.scrollY);
     placeCell(plate, false);
     applyScroll();
+    alignPhoto();
   } else {
     lines.forEach((line) => {
       line.style.opacity = '0';
