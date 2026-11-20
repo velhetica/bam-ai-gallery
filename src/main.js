@@ -978,11 +978,10 @@ function layoutFlow(section) {
   let curve;
   const rejoin = square('rejoin');
   if (narrow) {
-    const rail = insurer.left + insurer.width + 6;
-    const drop = Math.min(52, Math.max(28, (rejoin.y - appeal.y) * 0.34));
+    const rail = insurer.x;
     main = `M ${rail} ${insurer.y} V ${practice.y}`;
     leak = `M ${rail} ${denied.y} V ${appeal.y}`;
-    curve = `M ${appeal.x} ${appeal.y} V ${appeal.y + drop} C ${appeal.x} ${appeal.y + drop + 36}, ${rail} ${rejoin.y - 28}, ${rail} ${rejoin.y}`;
+    curve = `M ${rail} ${appeal.y} V ${rejoin.y}`;
   } else {
     const gutter = denied.left - 16;
     const lowY = Math.max(appeal.y, deniedCopy.bottom - origin.top + 22);
