@@ -293,7 +293,7 @@ function build() {
 
   const mastEl = document.querySelector('.mast');
   const cover = Math.ceil(mastEl?.getBoundingClientRect().bottom || (wordmark?.getBoundingClientRect().bottom || 48) + 20);
-  bandHeight = cover;
+  bandHeight = window.innerWidth < 760 ? Math.max(cover, 76) : cover;
   const rows = Math.max(1, Math.ceil(cover / metrics.row));
   baseRow = rows;
   layoutStage();
