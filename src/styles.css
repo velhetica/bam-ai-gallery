@@ -1402,6 +1402,22 @@ body.is-works .ledger-accent {
   }
 }
 
+@media (max-width: 379px) {
+  .chart [data-row="claim"],
+  .chart [data-row="insurer"],
+  .chart [data-row="denied"],
+  .chart [data-row="never"],
+  .chart [data-row="close"] {
+    width: 190px;
+  }
+
+  .chart [data-row="paid"],
+  .chart [data-row="appeal"] {
+    width: 150px;
+    margin-left: 40px;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .line > span,
   .room:not(.room-hero) .plate,

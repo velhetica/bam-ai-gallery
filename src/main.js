@@ -1093,8 +1093,9 @@ function layoutFlow(section) {
   };
   if (stack) {
     const head = 11;
-    const run = 28;
-    const rail = paid.left - gap - head - run;
+    const room = Math.max(16, paid.left - gap - head);
+    const run = Math.min(28, room);
+    const rail = Math.max(0, paid.left - gap - head - run);
     put('to-insurer', `M ${rail} ${claim.bottom} V ${insurer.top - gap}`, rail, insurer.top - gap, 'down');
     put('to-paid', `M ${rail} ${paid.cy} H ${paid.left - gap}`, paid.left - gap, paid.cy, 'right');
     put('to-denied', `M ${rail} ${insurer.bottom} V ${denied.top - gap}`, rail, denied.top - gap, 'down');
