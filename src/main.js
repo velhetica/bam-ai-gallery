@@ -673,45 +673,96 @@ function ensureRouteLayer() {
   ledger.append(routeLayer);
 }
 
+function textZones() {
+  const padX = metrics.col * 0.45;
+  const padY = metrics.row * 0.55;
+  const zones = [];
+  document.querySelectorAll('.placard, .story-title, .eyebrow, .works-copy, .flow, .callout-row, .sources, .agent-line').forEach((el) => {
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) return;
+    if (rect.bottom < bandHeight || rect.top > window.innerHeight) return;
+    zones.push({
+      left: rect.left - padX,
+      right: rect.right + padX,
+      top: rect.top - padY,
+      bottom: rect.bottom + padY,
+    });
+  });
+  return zones;
+}
+
+function segmentHits(x1, y1, x2, y2, zones) {
+  const left = Math.min(x1, x2);
+  const right = Math.max(x1, x2);
+  const top = Math.min(y1, y2);
+  const bottom = Math.max(y1, y2);
+  return zones.some((zone) => right > zone.left && left < zone.right && bottom > zone.top && top < zone.bottom);
+}
+
 function routePoints() {
   const width = window.innerWidth;
   const height = window.innerHeight;
-  const textRight = document.querySelector('.room-hero .placard')?.getBoundingClientRect().right ?? width * 0.4;
   const xs = [];
   const ys = [];
-  for (let x = metrics.originX; x <= width - metrics.line; x += metrics.col) {
-    if (x > textRight + metrics.col * 0.4) xs.push(snap(x));
-  }
-  for (let y = bandHeight; y <= height - metrics.row; y += metrics.row) ys.push(snap(y));
-  if (xs.length < 2 || ys.length < 2) return null;
-  const kind = ['right', 'tr', 'br'][Math.floor(Math.random() * 3)];
-  let x = xs[xs.length - 1];
-  let y = ys[Math.floor(Math.random() * ys.length)];
-  if (kind === 'tr') {
-    x = xs[Math.max(0, xs.length - 1 - Math.floor(Math.random() * Math.min(3, xs.length)))];
-    y = ys[0];
-  } else if (kind === 'br') {
-    x = xs[Math.max(0, xs.length - 1 - Math.floor(Math.random() * Math.min(3, xs.length)))];
-    y = ys[ys.length - 1];
-  }
-  const points = [{ x, y }];
-  let horizontal = kind === 'right' || Math.random() < 0.5;
-  if (kind !== 'right') horizontal = kind === 'tr' ? false : Math.random() < 0.5;
-  const turns = 1 + Math.floor(Math.random() * 3);
-  for (let i = 0; i < turns; i += 1) {
-    if (horizontal) {
-      const options = xs.filter((nx) => nx !== x);
-      if (!options.length) break;
-      x = options[Math.floor(Math.random() * options.length)];
-    } else {
-      const options = ys.filter((ny) => ny !== y);
-      if (!options.length) break;
-      y = options[Math.floor(Math.random() * options.length)];
+  for (let x = metrics.originX; x <= width - metrics.line; x += metrics.col) xs.push(snap(x));
+  const firstRow = snap(Math.ceil((bandHeight + metrics.row) / metrics.row) * metrics.row);
+  for (let y = firstRow; y <= height - metrics.row; y += metrics.row) ys.push(snap(y));
+  if (xs.length < 5 || ys.length < 5) return null;
+  const zones = textZones();
+  const minRun = 2;
+  for (let attempt = 0; attempt < 28; attempt += 1) {
+    const up = Math.random() < 0.5;
+    const legs = 2 + Math.floor(Math.random() * 3);
+    const startXI = Math.min(
+      xs.length - minRun - 1,
+      Math.max(1, Math.floor(xs.length * 0.42) + Math.floor(Math.random() * Math.max(1, xs.length * 0.28))),
+    );
+    const startYI = minRun + Math.floor(Math.random() * Math.max(1, ys.length - minRun * 2));
+    let xi = startXI;
+    let yi = Math.min(ys.length - minRun - 1, Math.max(minRun, startYI));
+    const points = [{ x: xs[xi], y: ys[yi] }];
+    let horizontal = Math.random() < 0.5;
+    let movedRight = false;
+    let movedVert = false;
+    let ok = true;
+    for (let leg = 0; leg < legs; leg += 1) {
+      if (horizontal) {
+        const room = xs.length - 1 - xi;
+        if (room < minRun) {
+          ok = false;
+          break;
+        }
+        const step = minRun + Math.floor(Math.random() * Math.min(3, room - minRun + 1));
+        const next = xi + step;
+        if (segmentHits(xs[xi], ys[yi], xs[next], ys[yi], zones)) {
+          ok = false;
+          break;
+        }
+        xi = next;
+        movedRight = true;
+      } else {
+        const dir = up ? -1 : 1;
+        const room = dir < 0 ? yi : ys.length - 1 - yi;
+        if (room < minRun) {
+          ok = false;
+          break;
+        }
+        const step = minRun + Math.floor(Math.random() * Math.min(4, room - minRun + 1));
+        const next = yi + dir * step;
+        if (segmentHits(xs[xi], ys[yi], xs[xi], ys[next], zones)) {
+          ok = false;
+          break;
+        }
+        yi = next;
+        movedVert = true;
+      }
+      points.push({ x: xs[xi], y: ys[yi] });
+      horizontal = !horizontal;
     }
-    points.push({ x, y });
-    horizontal = !horizontal;
+    if (!ok || !movedRight || !movedVert || points.length < 3) continue;
+    return points;
   }
-  return points.length > 1 ? points : null;
+  return null;
 }
 
 function sectionEngaged(id) {
@@ -746,63 +797,88 @@ function applyQuiet() {
 }
 
 function spawnRoute() {
-  if (reduced || document.hidden || !routeLayer || activeRoutes.length >= 2 || sectionEngaged('#industry') || sectionEngaged('#works')) return;
+  if (reduced || document.hidden || !routeLayer || activeRoutes.length >= 1 || sectionEngaged('#industry') || sectionEngaged('#works')) return;
   const points = routePoints();
   if (!points) return;
-  const path = document.createElementNS(SVG_NS, 'path');
-  path.setAttribute('d', points.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' '));
-  path.setAttribute('stroke-width', `${metrics.line}`);
+  const d = points.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' ');
+  const probe = document.createElementNS(SVG_NS, 'path');
+  probe.setAttribute('d', d);
+  routeLayer.append(probe);
+  const length = probe.getTotalLength();
+  probe.remove();
+  const tail = Math.min(length * 0.42, Math.max(metrics.col + metrics.row, metrics.col * 1.75));
+  if (length < tail + metrics.col) return;
+  const layers = [
+    { len: tail, opacity: 0.16 },
+    { len: tail * 0.58, opacity: 0.34 },
+    { len: Math.max(metrics.col * 0.45, tail * 0.22), opacity: 0.72 },
+  ];
+  const paths = layers.map((layer) => {
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('stroke-width', `${metrics.line}`);
+    path.style.opacity = String(layer.opacity);
+    const gap = length + layer.len;
+    path.style.strokeDasharray = `${layer.len} ${gap}`;
+    path.style.strokeDashoffset = String(layer.len);
+    path._tail = layer.len;
+    routeLayer.append(path);
+    return path;
+  });
   const end = points[points.length - 1];
+  const size = Math.max(4, metrics.line * 5);
   const node = document.createElementNS(SVG_NS, 'rect');
-  const size = 5;
-  node.setAttribute('x', `${end.x - size / 2}`);
-  node.setAttribute('y', `${end.y - size / 2}`);
   node.setAttribute('width', `${size}`);
   node.setAttribute('height', `${size}`);
   node.setAttribute('opacity', '0');
-  routeLayer.append(path, node);
-  const length = path.getTotalLength();
-  const speed = 150 + Math.random() * 100;
-  const duration = Math.max(0.6, length / speed);
-  gsap.set(path, { strokeDasharray: length, strokeDashoffset: length });
+  routeLayer.append(node);
+  const cornerAt = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+  const head = { dist: 0 };
+  const duration = length / (78 + Math.random() * 28);
   const state = { killed: false };
   const kill = () => {
     state.killed = true;
-    gsap.killTweensOf([path, node]);
-    path.remove();
+    gsap.killTweensOf([head, node, ...paths]);
+    paths.forEach((path) => path.remove());
     node.remove();
+    if (routeLayer) delete routeLayer.dataset.turn;
     activeRoutes = activeRoutes.filter((item) => item !== state);
   };
   state.kill = kill;
   activeRoutes.push(state);
-  gsap.to(path, {
-    strokeDashoffset: 0,
+  gsap.to(head, {
+    dist: length,
     duration,
     ease: 'none',
+    onUpdate: () => {
+      if (state.killed) return;
+      const at = head.dist;
+      paths.forEach((path) => {
+        path.style.strokeDashoffset = String(path._tail - at);
+      });
+      const point = paths[0].getPointAtLength(Math.min(at, length));
+      node.setAttribute('x', `${point.x - size / 2}`);
+      node.setAttribute('y', `${point.y - size / 2}`);
+      node.setAttribute('opacity', at > 1 ? '0.85' : '0');
+      if (routeLayer && at >= cornerAt && at <= cornerAt + tail) routeLayer.dataset.turn = '1';
+    },
     onComplete: () => {
       if (state.killed) return;
-      gsap.fromTo(
-        node,
-        { opacity: 0.4 },
-        {
-          opacity: 1,
-          duration: 1,
-          ease: 'sine.inOut',
-          yoyo: true,
-          repeat: 5,
-          onComplete: () => {
-            if (state.killed) return;
-            gsap.to(path, {
-              strokeDashoffset: length,
-              duration: Math.max(0.45, duration * 0.75),
-              ease: 'power1.in',
-              onComplete: () => {
-                gsap.to(node, { opacity: 0, duration: 0.2, onComplete: kill });
-              },
-            });
-          },
+      node.setAttribute('x', `${end.x - size / 2}`);
+      node.setAttribute('y', `${end.y - size / 2}`);
+      if (routeLayer) delete routeLayer.dataset.turn;
+      gsap.to(paths, { opacity: 0, duration: 0.4, ease: 'power1.out' });
+      gsap.fromTo(node, { opacity: 0.4 }, {
+        opacity: 1,
+        duration: 0.65,
+        ease: 'sine.inOut',
+        yoyo: true,
+        repeat: 3,
+        onComplete: () => {
+          if (state.killed) return;
+          gsap.to(node, { opacity: 0, duration: 0.25, onComplete: kill });
         },
-      );
+      });
     },
   });
 }
@@ -963,54 +1039,126 @@ function pointOf(el, origin) {
   };
 }
 
+function pin(el, x, y) {
+  el.style.left = `${Math.round(x)}px`;
+  el.style.top = `${Math.round(y)}px`;
+}
+
 function layoutFlow(section) {
   const board = section.querySelector('[data-flow]');
+  const stage = board?.querySelector('.claim-board');
   const svg = board?.querySelector('.flow-svg');
-  if (!board || !svg) return null;
+  if (!board || !stage || !svg) return null;
   const width = board.clientWidth;
+  if (width < 2) return null;
+  const narrow = window.innerWidth <= 759;
+  const col = metrics?.col || (narrow ? 48 : 96);
+  const row = metrics?.row || (narrow ? 32 : 64);
+  const origin = board.getBoundingClientRect();
+  const gx = (index) => snap((metrics?.originX || origin.left) + index * col - origin.left);
+  const gy = (index) => snap(row + index * row);
+  const practice = stage.querySelector('[data-node="practice"]');
+  const insurer = stage.querySelector('[data-node="insurer"]');
+  const denied = stage.querySelector('[data-node="denied"]');
+  const appeal = stage.querySelector('[data-note="appeal"]');
+  const overturn = stage.querySelector('[data-note="overturn"]');
+  const pileEl = stage.querySelector('[data-pile]');
+  const alignSquare = (node, cx, cy) => {
+    pin(node, 0, 0);
+    const square = node.querySelector('.sq').getBoundingClientRect();
+    const dx = cx - (square.left - origin.left + square.width / 2);
+    const dy = cy - (square.top - origin.top + square.height / 2);
+    pin(node, dx, dy);
+  };
+  let out;
+  let back;
+  let drop;
+  let loop;
+  let slots = [];
+  if (narrow) {
+    const practiceX = gx(2);
+    const insurerX = gx(2);
+    const practiceY = gy(1);
+    const insurerY = gy(5);
+    const dropX = gx(4);
+    const trayY = gy(10);
+    alignSquare(practice, practiceX, practiceY);
+    alignSquare(insurer, insurerX, insurerY);
+    pin(appeal, gx(1) + 6, gy(8));
+    appeal.style.width = `${col * 1.6}px`;
+    pin(pileEl, dropX + 2, gy(8));
+    pileEl.style.width = `${col}px`;
+    pileEl.style.height = `${row * 2}px`;
+    pin(denied, gx(0), gy(11) + 6);
+    denied.style.width = `${Math.max(140, width - 8)}px`;
+    pin(overturn, gx(1), gy(16));
+    overturn.style.width = `${Math.max(140, width - gx(1) - 4)}px`;
+    stage.style.height = `${gy(18)}px`;
+    out = `M ${practiceX} ${practiceY} H ${gx(1)} V ${insurerY} H ${insurerX}`;
+    back = `M ${gx(0)} ${insurerY} V ${practiceY}`;
+    drop = `M ${insurerX} ${insurerY} H ${dropX} V ${trayY}`;
+    loop = `M ${dropX} ${trayY} H ${gx(0)} V ${insurerY}`;
+    const gap = 7;
+    for (let r = 0; r < 4; r += 1) {
+      for (let c = 0; c < 4; c += 1) {
+        slots.push({ x: dropX + 6 + c * gap, y: trayY - 8 - r * gap });
+      }
+    }
+  } else {
+    const usable = Math.max(6, Math.floor((width - 8) / col));
+    const insurerCol = Math.max(5, Math.min(8, usable - 1));
+    const practiceX = gx(1);
+    const practiceY = 56;
+    const insurerX = gx(insurerCol);
+    const backY = 128;
+    const trayY = 292;
+    const loopX = gx(insurerCol - 1);
+    alignSquare(practice, practiceX, practiceY);
+    alignSquare(insurer, insurerX, practiceY);
+    pin(overturn, gx(2), backY + 18);
+    overturn.style.width = '10.5rem';
+    pin(appeal, loopX - 128, 220);
+    appeal.style.width = '6.75rem';
+    pin(pileEl, insurerX + 8, 196);
+    pileEl.style.width = '42px';
+    pileEl.style.height = '96px';
+    const deniedW = Math.min(230, Math.max(168, width - insurerX - 8));
+    denied.style.width = `${deniedW}px`;
+    denied.style.textAlign = 'left';
+    pin(denied, Math.min(insurerX + 8, width - deniedW - 4), trayY + 16);
+    stage.style.height = '460px';
+    out = `M ${practiceX} ${practiceY} H ${insurerX}`;
+    back = `M ${insurerX} ${practiceY} V ${backY} H ${practiceX}`;
+    drop = `M ${insurerX} ${practiceY} V ${trayY}`;
+    loop = `M ${insurerX} ${trayY} H ${loopX} V ${practiceY} H ${insurerX}`;
+    const gap = 7;
+    for (let r = 0; r < 5; r += 1) {
+      for (let c = 0; c < 5; c += 1) {
+        slots.push({ x: insurerX + 12 + c * gap, y: trayY - 8 - r * gap });
+      }
+    }
+  }
   const height = board.clientHeight;
-  if (width < 2 || height < 2) return null;
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
   svg.setAttribute('width', String(width));
   svg.setAttribute('height', String(height));
-  const origin = board.getBoundingClientRect();
-  const square = (name) => pointOf(board.querySelector(`[data-node="${name}"] .sq`), origin);
-  const insurer = square('insurer');
-  const denied = square('denied');
-  const appeal = square('appeal');
-  const practice = square('practice');
-  const deniedCopy = board.querySelector('[data-node="denied"] .node-copy').getBoundingClientRect();
-  const narrow = window.innerWidth <= 759;
-  let main;
-  let leak;
-  let curve;
-  const rejoin = square('rejoin');
-  if (narrow) {
-    const rail = insurer.x;
-    main = `M ${rail} ${insurer.y} V ${practice.y}`;
-    leak = `M ${rail} ${denied.y} V ${appeal.y}`;
-    curve = `M ${rail} ${appeal.y} V ${rejoin.y}`;
-  } else {
-    const gutter = denied.left - 16;
-    const lowY = Math.max(appeal.y, deniedCopy.bottom - origin.top + 22);
-    main = `M ${insurer.x} ${insurer.y} H ${practice.x}`;
-    leak = `M ${denied.x} ${denied.y} H ${gutter} V ${appeal.y} H ${appeal.x}`;
-    curve = `M ${appeal.x} ${appeal.y} C ${rejoin.x} ${lowY}, ${rejoin.x} ${(lowY + rejoin.y) / 2}, ${rejoin.x} ${rejoin.y}`;
-  }
   const drawn = {
-    main: svg.querySelector('[data-draw="main"]'),
-    leak: svg.querySelector('[data-draw="leak"]'),
-    curve: svg.querySelector('[data-draw="curve"]'),
+    out: svg.querySelector('[data-draw="out"]'),
+    back: svg.querySelector('[data-draw="back"]'),
+    drop: svg.querySelector('[data-draw="drop"]'),
+    loop: svg.querySelector('[data-draw="loop"]'),
   };
-  drawn.main.setAttribute('d', main);
-  drawn.leak.setAttribute('d', leak);
-  drawn.curve.setAttribute('d', curve);
+  drawn.out.setAttribute('d', out);
+  drawn.back.setAttribute('d', back);
+  drawn.drop.setAttribute('d', drop);
+  drawn.loop.setAttribute('d', loop);
   const played = section.dataset.played === '1' || reduced;
   Object.values(drawn).forEach((path) => {
     const length = path.getTotalLength() || 1;
     path.style.strokeDasharray = `${length}`;
     path.style.strokeDashoffset = played ? '0' : `${length}`;
   });
+  svg._story = { ...drawn, slots, narrow };
   return svg;
 }
 
@@ -1039,7 +1187,8 @@ function drawJourney(section, tl, start) {
   paths.forEach((path, index) => {
     const length = path.getTotalLength() || 1;
     path.style.strokeDasharray = `${length}`;
-    tl.fromTo(path, { strokeDashoffset: length }, { strokeDashoffset: 0, duration: path.dataset.draw === 'curve' ? 1.15 : 0.85, ease: 'power1.out' }, start + index * 0.16);
+    const longer = path.dataset.draw === 'loop' || path.dataset.draw === 'back';
+    tl.fromTo(path, { strokeDashoffset: length }, { strokeDashoffset: 0, duration: longer ? 1.05 : 0.8, ease: 'power1.out' }, start + index * 0.14);
   });
   const paid = section.querySelector('.sq.is-paid');
   if (paid) tl.to(paid, { opacity: 1, duration: 0.25, ease: 'none' }, start + Math.max(0.4, paths.length * 0.16));
@@ -1050,56 +1199,46 @@ let moneyRaf = 0;
 let moneyStamp = 0;
 let moneySpawn = 0;
 let moneySerial = 0;
+let denySerial = 0;
 const moneyPackets = [];
+const claimSpeed = 68;
 
-function flowPaths(svg) {
-  const main = svg.querySelector('[data-draw="main"]');
-  const leak = svg.querySelector('[data-draw="leak"]');
-  const curve = svg.querySelector('[data-draw="curve"]');
-  if (!main || !leak || !curve) return null;
-  const mainLen = main.getTotalLength();
-  const nearest = (target) => {
-    let at = 0;
-    let best = Infinity;
-    for (let i = 0; i <= 64; i += 1) {
-      const d = (mainLen * i) / 64;
-      const point = main.getPointAtLength(d);
-      const dx = point.x - target.x;
-      const dy = point.y - target.y;
-      const dist = dx * dx + dy * dy;
-      if (dist < best) {
-        best = dist;
-        at = d;
-      }
-    }
-    return at;
-  };
-  return {
-    svg,
-    main,
-    leak,
-    curve,
-    mainLen,
-    leakLen: leak.getTotalLength(),
-    curveLen: curve.getTotalLength(),
-    join: nearest(leak.getPointAtLength(0)),
-    rejoin: nearest(curve.getPointAtLength(curve.getTotalLength())),
-  };
+function storyOf(svg) {
+  return svg?._story || null;
 }
 
-function placePacket(el, path, distance, svg) {
-  const point = path.getPointAtLength(Math.max(0, Math.min(distance, path.getTotalLength())));
-  const box = svg.viewBox.baseVal;
-  el.style.left = `${(point.x / box.width) * 100}%`;
-  el.style.top = `${(point.y / box.height) * 100}%`;
+function placeOn(el, path, distance) {
+  const total = path.getTotalLength() || 0;
+  const point = path.getPointAtLength(Math.max(0, Math.min(distance, total)));
+  el.style.left = `${point.x}px`;
+  el.style.top = `${point.y}px`;
 }
 
-function spawnPacket(host, divert, appeal) {
-  if (moneyPackets.length >= 3) return;
+function makeClaim(host, className) {
   const el = document.createElement('i');
-  el.className = 'packet';
+  el.className = className;
   host.append(el);
-  moneyPackets.push({ el, leg: 'main', dist: 0, divert, appeal, hold: 0 });
+  return el;
+}
+
+function parkInPile(packet, story) {
+  const slot = story.slots.find((item) => !item.taken);
+  if (!slot) {
+    const oldest = moneyPackets.find((item) => item.leg === 'pile');
+    if (oldest) {
+      oldest.el.style.opacity = '0';
+      oldest.hold = 0.7;
+      oldest.leg = 'fade';
+      if (oldest.slot) oldest.slot.taken = false;
+    }
+  }
+  const free = story.slots.find((item) => !item.taken) || story.slots[0];
+  free.taken = true;
+  packet.slot = free;
+  packet.leg = 'pile';
+  packet.el.style.left = `${free.x}px`;
+  packet.el.style.top = `${free.y}px`;
+  packet.el.style.opacity = '0.9';
 }
 
 function moneyFrame(now) {
@@ -1108,21 +1247,32 @@ function moneyFrame(now) {
   if (document.hidden) return;
   const section = document.querySelector('.story-industry');
   const svg = section && flowSvg(section);
-  const flow = svg && flowPaths(svg);
+  const story = storyOf(svg);
   const host = svg && svg.parentElement.querySelector('.packets');
-  if (!flow || !host) return;
+  if (!story || !host) return;
   const dt = Math.min(0.05, (now - moneyStamp) / 1000);
   moneyStamp = now;
-  const scale = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width || 1;
-  const step = (72 / scale) * dt;
-  if (now - moneySpawn > 1900) {
+  if (now - moneySpawn > 1300 && moneyPackets.length < 36) {
     moneySpawn = now;
     moneySerial += 1;
-    spawnPacket(host, moneySerial % 5 === 0, moneySerial % 20 === 0);
+    const deny = moneySerial % 5 === 0;
+    const el = makeClaim(host, 'claim');
+    moneyPackets.push({ el, leg: 'out', dist: 0, deny, appeal: false, won: false, hold: 0, slot: null });
   }
   for (let i = moneyPackets.length - 1; i >= 0; i -= 1) {
     const packet = moneyPackets[i];
-    if (packet.hold) {
+    if (packet.leg === 'pile') continue;
+    if (packet.leg === 'wait-loop') {
+      packet.hold -= dt;
+      if (packet.hold <= 0) {
+        packet.leg = 'loop';
+        packet.dist = 0;
+        packet.el.classList.add('is-loop');
+        placeOn(packet.el, story.loop, 0);
+      }
+      continue;
+    }
+    if (packet.leg === 'fade') {
       packet.hold -= dt;
       if (packet.hold <= 0) {
         packet.el.remove();
@@ -1130,49 +1280,74 @@ function moneyFrame(now) {
       }
       continue;
     }
-    packet.dist += step;
-    if (packet.leg === 'main' && packet.divert && packet.dist >= flow.join && packet.dist - step < flow.join) {
-      packet.leg = 'leak';
-      packet.dist = 0;
-    }
-    const path = packet.leg === 'leak' ? flow.leak : packet.leg === 'curve' ? flow.curve : flow.main;
-    const length = packet.leg === 'leak' ? flow.leakLen : packet.leg === 'curve' ? flow.curveLen : flow.mainLen;
-    if (packet.dist >= length) {
-      if (packet.leg === 'leak' && packet.appeal) {
-        packet.leg = 'curve';
-        packet.dist = 0;
-        placePacket(packet.el, flow.curve, 0, svg);
-        continue;
-      }
-      if (packet.leg === 'curve') {
-        packet.leg = 'main';
-        packet.dist = flow.rejoin + 6;
-        packet.divert = false;
-        placePacket(packet.el, flow.main, packet.dist, svg);
-        continue;
-      }
-      if (packet.leg === 'leak') {
-        packet.el.classList.add('is-dim');
-        packet.el.style.opacity = '0.14';
-        packet.hold = 1.6;
-        placePacket(packet.el, flow.leak, length, svg);
-        continue;
-      }
-      packet.el.remove();
-      moneyPackets.splice(i, 1);
+    const path = story[packet.leg];
+    const length = path?.getTotalLength() || 0;
+    if (!path || !length) continue;
+    packet.dist += claimSpeed * dt;
+    if (packet.dist < length) {
+      placeOn(packet.el, path, packet.dist);
       continue;
     }
-    placePacket(packet.el, path, packet.dist, svg);
-    const progress = length ? Math.min(1, packet.dist / length) : 0;
-    packet.el.style.opacity = String(0.12 + 0.32 * Math.sin(Math.PI * progress));
+    if (packet.leg === 'out') {
+      if (packet.deny) {
+        denySerial += 1;
+        packet.appeal = denySerial === 1 || denySerial % 8 === 0;
+        packet.leg = 'drop';
+        packet.dist = 0;
+        placeOn(packet.el, story.drop, 0);
+        continue;
+      }
+      packet.leg = 'back';
+      packet.dist = 0;
+      placeOn(packet.el, story.back, 0);
+      continue;
+    }
+    if (packet.leg === 'drop') {
+      if (packet.appeal) {
+        packet.hold = 0.85;
+        packet.leg = 'wait-loop';
+        placeOn(packet.el, story.drop, length);
+        continue;
+      }
+      parkInPile(packet, story);
+      continue;
+    }
+    if (packet.leg === 'loop') {
+      packet.won = denySerial % 5 !== 1;
+      packet.leg = 'back';
+      packet.dist = 0;
+      packet.el.classList.remove('is-loop');
+      if (packet.won) packet.el.classList.add('is-won');
+      placeOn(packet.el, story.back, 0);
+      continue;
+    }
+    packet.el.remove();
+    moneyPackets.splice(i, 1);
   }
+}
+
+function seedPile(section) {
+  const svg = flowSvg(section);
+  const story = storyOf(svg);
+  const host = section.querySelector('.packets');
+  if (!story || !host) return;
+  story.slots.slice(0, Math.min(14, story.slots.length)).forEach((slot) => {
+    slot.taken = true;
+    const el = makeClaim(host, 'claim');
+    el.style.left = `${slot.x}px`;
+    el.style.top = `${slot.y}px`;
+    el.style.opacity = '0.9';
+    moneyPackets.push({ el, leg: 'pile', dist: 0, deny: true, appeal: false, won: false, hold: 0, slot });
+  });
 }
 
 function startMoney() {
   if (reduced || moneyOn) return;
+  const section = document.querySelector('.story-industry');
   moneyOn = true;
   moneyStamp = performance.now();
-  moneySpawn = moneyStamp - 1200;
+  moneySpawn = moneyStamp - 900;
+  if (section && moneyPackets.length === 0) seedPile(section);
   moneyRaf = requestAnimationFrame(moneyFrame);
 }
 
@@ -1184,19 +1359,25 @@ function stopMoney() {
 function freezePackets(section) {
   const svg = flowSvg(section);
   const host = svg && svg.parentElement.querySelector('.packets');
-  const flow = svg && flowPaths(svg);
-  if (!host || !flow) return;
+  const story = storyOf(svg);
+  if (!host || !story) return;
   host.replaceChildren();
-  [0.15, 0.4, 0.7].forEach((at) => {
-    const el = document.createElement('i');
-    el.className = 'packet';
-    host.append(el);
-    placePacket(el, flow.main, flow.mainLen * at, svg);
+  [0.18, 0.42, 0.7].forEach((at) => {
+    const el = makeClaim(host, 'claim');
+    placeOn(el, story.out, story.out.getTotalLength() * at);
   });
-  const dim = document.createElement('i');
-  dim.className = 'packet is-dim';
-  host.append(dim);
-  placePacket(dim, flow.leak, flow.leakLen, svg);
+  [0.25, 0.6].forEach((at) => {
+    const el = makeClaim(host, 'claim');
+    placeOn(el, story.back, story.back.getTotalLength() * at);
+  });
+  const won = makeClaim(host, 'claim is-won');
+  placeOn(won, story.back, story.back.getTotalLength() * 0.45);
+  story.slots.slice(0, 12).forEach((slot) => {
+    const el = makeClaim(host, 'claim');
+    el.style.left = `${slot.x}px`;
+    el.style.top = `${slot.y}px`;
+    slot.taken = true;
+  });
 }
 
 function enterIndustry(section) {
@@ -1207,6 +1388,7 @@ function enterIndustry(section) {
     freezePackets(section);
     return;
   }
+  seedPile(section);
   const tl = gsap.timeline();
   drawJourney(section, tl, 0);
   [...section.querySelectorAll('.line')].forEach((line, index) => {
@@ -1319,8 +1501,10 @@ window.addEventListener('resize', () => {
     applyScroll();
     document.querySelectorAll('.story-industry').forEach((section) => {
       layoutFlow(section);
+      moneyPackets.splice(0).forEach((packet) => packet.el.remove());
+      if (reduced) freezePackets(section);
+      else if (moneyOn) seedPile(section);
     });
-    moneyPackets.splice(0).forEach((packet) => packet.el.remove());
   } else {
     lines.forEach((line) => {
       line.style.opacity = '0';

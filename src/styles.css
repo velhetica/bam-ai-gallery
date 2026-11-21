@@ -351,6 +351,8 @@ body {
 .route-layer path {
   fill: none;
   stroke: #c8b994;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
   shape-rendering: crispEdges;
 }
 
@@ -584,6 +586,78 @@ h1 {
 
 .flow {
   position: relative;
+}
+
+.claim-board {
+  position: relative;
+  z-index: 2;
+  height: 28rem;
+}
+
+.claim-board .flow-node,
+.claim-board .flow-tag,
+.claim-board .pile-mark {
+  position: absolute;
+  margin: 0;
+}
+
+.claim-board .flow-node {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  width: 5.5rem;
+  padding-top: 0;
+}
+
+.claim-board .flow-node .sq {
+  position: relative;
+  top: auto;
+  left: auto;
+  flex: none;
+}
+
+.claim-board .pile-mark {
+  width: 2.5rem;
+  height: 4.5rem;
+}
+
+.claim-board .figure-num {
+  width: max-content;
+  margin-top: 0.2rem;
+}
+
+.flow-tag {
+  margin: 0;
+  max-width: 22rem;
+}
+
+.flow-tag .figure-num {
+  font-size: clamp(1.45rem, 2vw, 1.9rem);
+}
+
+.flow-close {
+  margin: 2.25rem 0 0;
+  max-width: 16em;
+  color: var(--cream);
+  font-family: var(--display);
+  font-weight: 300;
+  font-size: clamp(1.35rem, 2vw, 1.85rem);
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.claim {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  background: #aba393;
+  pointer-events: none;
+}
+
+.claim.is-won {
+  background: #c8b994;
 }
 
 .flow-board {
@@ -1007,6 +1081,23 @@ body.is-works .ledger-accent {
   .callout-row {
     flex-direction: column;
     gap: 2.25rem;
+  }
+
+  .claim-board {
+    height: 36rem;
+  }
+
+  .claim-board .flow-node {
+    width: 4.75rem;
+  }
+
+  .flow-tag .figure-num,
+  .claim-board .figure-num {
+    font-size: 1.35rem;
+  }
+
+  .claim-board .figure-label {
+    font-size: 13px;
   }
 
   .story-works {

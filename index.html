@@ -53,52 +53,36 @@
         </h2>
         <div class="flow" data-flow>
           <svg class="flow-svg" aria-hidden="true">
-            <path data-draw="main" d="" />
-            <path data-draw="leak" d="" />
-            <path data-draw="curve" d="" />
+            <path data-draw="out" />
+            <path data-draw="back" />
+            <path data-draw="drop" />
+            <path data-draw="loop" />
           </svg>
           <div class="packets" aria-hidden="true"></div>
-          <div class="flow-board">
-            <div class="flow-node" data-node="insurer">
-              <i class="sq"></i>
-              <div class="node-copy">
-                <span class="node-name">Insurer</span>
-              </div>
-            </div>
-            <div class="flow-node" data-node="denied">
-              <i class="sq"></i>
-              <div class="node-copy">
-                <span class="node-name">Denied</span>
-                <span class="figure-num">1 in 5</span>
-                <span class="figure-label">in-network claims denied by ACA marketplace plans in 2023</span>
-              </div>
-            </div>
-            <div class="flow-node" data-node="appeal">
-              <i class="sq"></i>
-              <div class="node-copy">
-                <span class="node-name">Appeal</span>
-                <span class="figure-num">&lt;1%</span>
-                <span class="figure-label">of those denials were ever appealed</span>
-              </div>
-            </div>
-            <div class="flow-node is-rejoin" data-node="rejoin">
-              <i class="sq"></i>
-              <div class="node-copy">
-                <span class="figure-num">80.7%</span>
-                <span class="figure-label">of appealed Medicare Advantage prior auth denials were overturned in 2024</span>
-              </div>
-            </div>
+          <div class="claim-board">
             <div class="flow-node" data-node="practice">
               <i class="sq is-paid"></i>
-              <div class="node-copy">
-                <span class="node-name">Practice</span>
-              </div>
+              <span class="node-name">Practice</span>
             </div>
+            <div class="flow-node" data-node="insurer">
+              <span class="node-name">Insurer</span>
+              <i class="sq"></i>
+            </div>
+            <p class="flow-tag" data-note="overturn">
+              <span class="figure-num">80.7%</span>
+              <span class="figure-label">overturned when appealed</span>
+            </p>
+            <p class="flow-tag" data-note="appeal">
+              <span class="node-name">Appeal</span>
+              <span class="figure-num">&lt;1%</span>
+            </p>
+            <div class="flow-node is-denied" data-node="denied">
+              <span class="figure-num">1 in 5</span>
+              <span class="figure-label">in-network claims denied by ACA marketplace plans in 2023</span>
+            </div>
+            <i class="pile-mark" data-pile aria-hidden="true"></i>
           </div>
-        </div>
-        <div class="callout-row">
-          <p class="callout"><span class="line"><span class="figure-num">13 hours</span></span><span class="figure-label">a week minimum per physician on prior authorization</span></p>
-          <p class="callout"><span class="line"><span class="figure-num">1.2 seconds</span></span><span class="figure-label">Average time per denied claim in Cigna’s PxDx system. Cigna disputes the characterization.</span></p>
+          <p class="flow-close">Most denied money is never fought for.</p>
         </div>
         <details class="sources">
           <summary>Sources</summary>
