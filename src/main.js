@@ -1045,10 +1045,11 @@ function pin(el, x, y) {
 }
 
 function headPath(x, y, dir) {
-  const s = 5;
-  if (dir === 'right') return `M ${x - s} ${y - 3.5} L ${x} ${y} L ${x - s} ${y + 3.5}`;
-  if (dir === 'down') return `M ${x - 3.5} ${y - s} L ${x} ${y} L ${x + 3.5} ${y - s}`;
-  return `M ${x - 3.5} ${y + s} L ${x} ${y} L ${x + 3.5} ${y + s}`;
+  const back = 11;
+  const wing = 5.5;
+  if (dir === 'right') return `M ${x - back} ${y - wing} L ${x} ${y} L ${x - back} ${y + wing}`;
+  if (dir === 'down') return `M ${x - wing} ${y - back} L ${x} ${y} L ${x + wing} ${y - back}`;
+  return `M ${x - wing} ${y + back} L ${x} ${y} L ${x + wing} ${y + back}`;
 }
 
 function layoutFlow(section) {
@@ -1077,8 +1078,9 @@ function layoutFlow(section) {
   const denied = rel(box('denied'));
   const appeal = rel(box('appeal'));
   const never = rel(box('never'));
-  const gap = 6;
+  const gap = 2;
   const narrow = window.innerWidth <= 759;
+  const spine = insurer.cx;
   const paths = {};
   const put = (name, d, x, y, dir) => {
     const shaft = svg.querySelector(`[data-draw="${name}"]`);
@@ -1088,29 +1090,30 @@ function layoutFlow(section) {
     paths[name] = shaft;
   };
   if (narrow) {
-    put('to-insurer', `M ${claim.cx} ${claim.bottom} V ${insurer.top - gap}`, claim.cx, insurer.top - gap, 'down');
+    put('to-insurer', `M ${spine} ${claim.bottom} V ${insurer.top - gap}`, spine, insurer.top - gap, 'down');
     put('to-paid', `M ${insurer.right} ${insurer.cy} H ${paid.left - gap}`, paid.left - gap, insurer.cy, 'right');
-    put('to-denied', `M ${insurer.cx} ${insurer.bottom} V ${denied.top - gap}`, insurer.cx, denied.top - gap, 'down');
+    put('to-denied', `M ${spine} ${insurer.bottom} V ${denied.top - gap}`, spine, denied.top - gap, 'down');
     put('to-appeal', `M ${denied.right} ${denied.cy} H ${appeal.left - gap}`, appeal.left - gap, denied.cy, 'right');
     put('rejoin', `M ${appeal.cx} ${appeal.top} V ${paid.bottom + gap}`, appeal.cx, paid.bottom + gap, 'up');
-    put('to-never', `M ${denied.cx} ${denied.bottom} V ${never.top - gap}`, denied.cx, never.top - gap, 'down');
+    put('to-never', `M ${spine} ${denied.bottom} V ${never.top - gap}`, spine, never.top - gap, 'down');
   } else {
     put('to-insurer', `M ${claim.right} ${claim.cy} H ${insurer.left - gap}`, insurer.left - gap, claim.cy, 'right');
     put('to-paid', `M ${insurer.right} ${insurer.cy} H ${paid.left - gap}`, paid.left - gap, insurer.cy, 'right');
-    put('to-denied', `M ${insurer.cx} ${insurer.bottom} V ${denied.top - gap}`, insurer.cx, denied.top - gap, 'down');
+    put('to-denied', `M ${spine} ${insurer.bottom} V ${denied.top - gap}`, spine, denied.top - gap, 'down');
     put('to-appeal', `M ${denied.right} ${denied.cy} H ${appeal.left - gap}`, appeal.left - gap, denied.cy, 'right');
     put('rejoin', `M ${appeal.cx} ${appeal.top} V ${paid.bottom + gap}`, appeal.cx, paid.bottom + gap, 'up');
-    put('to-never', `M ${denied.cx} ${denied.bottom} V ${never.top - gap}`, denied.cx, never.top - gap, 'down');
+    put('to-never', `M ${spine} ${denied.bottom} V ${never.top - gap}`, spine, never.top - gap, 'down');
   }
   const win = board.querySelector('[data-stat="win"]');
   if (win) {
     const winW = win.offsetWidth || 72;
     const winH = win.offsetHeight || 36;
-    let left = appeal.cx + 14;
+    const clear = 18;
+    let left = appeal.cx + clear;
     let top = (paid.bottom + appeal.top) / 2 - winH / 2;
-    if (left + winW > width - 2) left = Math.max(4, appeal.cx - winW - 12);
-    if (top < paid.bottom + 4) top = paid.bottom + 4;
-    if (top + winH > appeal.top - 4) top = Math.max(paid.bottom + 4, appeal.top - winH - 4);
+    if (left + winW > width - 2) left = Math.max(4, appeal.cx - winW - clear);
+    if (top < paid.bottom + 12) top = paid.bottom + 12;
+    if (top + winH > appeal.top - 12) top = Math.max(paid.bottom + 12, appeal.top - winH - 12);
     pin(win, left, top);
   }
   const played = section.dataset.played === '1' || reduced;
