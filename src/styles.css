@@ -1356,6 +1356,52 @@ body.is-works .ledger-accent {
   }
 }
 
+@media (max-width: 600px) {
+  .chart {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 64px;
+    width: calc(100% + 100px);
+    margin-left: -50px;
+    margin-right: -50px;
+  }
+
+  .chart-row {
+    width: auto;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .chart [data-row="claim"],
+  .chart [data-row="insurer"],
+  .chart [data-row="denied"],
+  .chart [data-row="never"],
+  .chart [data-row="close"] {
+    width: calc(100% - 48px);
+    margin-left: 0;
+  }
+
+  .chart [data-row="paid"],
+  .chart [data-row="appeal"] {
+    width: calc(100% - 48px - 72px);
+    margin-left: 72px;
+  }
+
+  .box,
+  .box.is-heavy {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+
+  .chart .stat-deny {
+    position: static;
+    margin: 0 0 0 48px;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .line > span,
   .room:not(.room-hero) .plate,

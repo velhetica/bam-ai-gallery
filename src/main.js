@@ -1048,6 +1048,7 @@ function headPath(x, y, dir) {
   const back = 11;
   const wing = 5.5;
   if (dir === 'right') return `M ${x - back} ${y - wing} L ${x} ${y} L ${x - back} ${y + wing}`;
+  if (dir === 'left') return `M ${x + back} ${y - wing} L ${x} ${y} L ${x + back} ${y + wing}`;
   if (dir === 'down') return `M ${x - wing} ${y - back} L ${x} ${y} L ${x + wing} ${y - back}`;
   return `M ${x - wing} ${y + back} L ${x} ${y} L ${x + wing} ${y + back}`;
 }
@@ -1078,7 +1079,8 @@ function layoutFlow(section) {
   const denied = rel(box('denied'));
   const appeal = rel(box('appeal'));
   const never = rel(box('never'));
-  const gap = 2;
+  const gap = 4;
+  const stack = window.innerWidth <= 600;
   const narrow = window.innerWidth <= 759;
   const spine = insurer.cx;
   const paths = {};
@@ -1089,7 +1091,18 @@ function layoutFlow(section) {
     head.setAttribute('d', headPath(x, y, dir));
     paths[name] = shaft;
   };
-  if (narrow) {
+  if (stack) {
+    const head = 11;
+    const run = 28;
+    const rail = paid.left - gap - head - run;
+    put('to-insurer', `M ${rail} ${claim.bottom} V ${insurer.top - gap}`, rail, insurer.top - gap, 'down');
+    put('to-paid', `M ${rail} ${paid.cy} H ${paid.left - gap}`, paid.left - gap, paid.cy, 'right');
+    put('to-denied', `M ${rail} ${insurer.bottom} V ${denied.top - gap}`, rail, denied.top - gap, 'down');
+    put('to-appeal', `M ${rail} ${appeal.cy} H ${appeal.left - gap}`, appeal.left - gap, appeal.cy, 'right');
+    const railX = paid.right + gap + head + run;
+    put('rejoin', `M ${railX} ${appeal.cy} V ${paid.cy} H ${paid.right + gap}`, paid.right + gap, paid.cy, 'left');
+    put('to-never', `M ${rail} ${denied.bottom} V ${never.top - gap}`, rail, never.top - gap, 'down');
+  } else if (narrow) {
     put('to-insurer', `M ${spine} ${claim.bottom} V ${insurer.top - gap}`, spine, insurer.top - gap, 'down');
     put('to-paid', `M ${insurer.right} ${insurer.cy} H ${paid.left - gap}`, paid.left - gap, insurer.cy, 'right');
     put('to-denied', `M ${spine} ${insurer.bottom} V ${denied.top - gap}`, spine, denied.top - gap, 'down');
@@ -1109,11 +1122,20 @@ function layoutFlow(section) {
     const winW = win.offsetWidth || 72;
     const winH = win.offsetHeight || 36;
     const clear = 18;
-    let left = appeal.cx + clear;
-    let top = (paid.bottom + appeal.top) / 2 - winH / 2;
-    if (left + winW > width - 2) left = Math.max(4, appeal.cx - winW - clear);
-    if (top < paid.bottom + 12) top = paid.bottom + 12;
-    if (top + winH > appeal.top - 12) top = Math.max(paid.bottom + 12, appeal.top - winH - 12);
+    let left;
+    let top;
+    if (stack) {
+      const railX = paid.right + gap + 11 + 28;
+      left = Math.max(4, railX - winW - clear);
+      top = paid.bottom + 14;
+      if (top + winH > denied.top - 12) top = Math.max(paid.bottom + 12, denied.top - winH - 12);
+    } else {
+      left = appeal.cx + clear;
+      top = (paid.bottom + appeal.top) / 2 - winH / 2;
+      if (left + winW > width - 2) left = Math.max(4, appeal.cx - winW - clear);
+      if (top < paid.bottom + 12) top = paid.bottom + 12;
+      if (top + winH > appeal.top - 12) top = Math.max(paid.bottom + 12, appeal.top - winH - 12);
+    }
     pin(win, left, top);
   }
   const played = section.dataset.played === '1' || reduced;
