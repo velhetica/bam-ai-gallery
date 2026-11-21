@@ -51,38 +51,38 @@
           <span class="line"><span>Insurers deny.</span></span>
           <span class="line"><span>Almost nobody fights back.</span></span>
         </h2>
-        <div class="flow" data-flow>
-          <svg class="flow-svg" aria-hidden="true">
-            <path data-draw="out" />
-            <path data-draw="back" />
-            <path data-draw="drop" />
-            <path data-draw="loop" />
+        <div class="chart" data-flow>
+          <svg class="chart-svg flow-svg" aria-hidden="true">
+            <path data-draw="to-insurer" />
+            <path data-head="to-insurer" />
+            <path data-draw="to-paid" class="is-champ" />
+            <path data-head="to-paid" class="is-champ" />
+            <path data-draw="to-denied" />
+            <path data-head="to-denied" />
+            <path data-draw="to-appeal" class="is-thin" />
+            <path data-head="to-appeal" class="is-thin" />
+            <path data-draw="rejoin" class="is-thin" />
+            <path data-head="rejoin" class="is-thin" />
+            <path data-draw="to-never" />
+            <path data-head="to-never" />
           </svg>
-          <div class="packets" aria-hidden="true"></div>
-          <div class="claim-board">
-            <div class="flow-node" data-node="practice">
-              <i class="sq is-paid"></i>
-              <span class="node-name">Practice</span>
-            </div>
-            <div class="flow-node" data-node="insurer">
-              <span class="node-name">Insurer</span>
-              <i class="sq"></i>
-            </div>
-            <p class="flow-tag" data-note="overturn">
-              <span class="figure-num">80.7%</span>
-              <span class="figure-label">overturned when appealed</span>
-            </p>
-            <p class="flow-tag" data-note="appeal">
-              <span class="node-name">Appeal</span>
-              <span class="figure-num">&lt;1%</span>
-            </p>
-            <div class="flow-node is-denied" data-node="denied">
-              <span class="figure-num">1 in 5</span>
-              <span class="figure-label">in-network claims denied by ACA marketplace plans in 2023</span>
-            </div>
-            <i class="pile-mark" data-pile aria-hidden="true"></i>
+          <div class="chart-row" data-row="claim"><div class="box" data-box="claim">Claim</div></div>
+          <div class="chart-row" data-row="insurer"><div class="box" data-box="insurer">Insurer</div></div>
+          <div class="chart-row" data-row="paid"><div class="box is-paid" data-box="paid">Paid → Practice</div></div>
+          <div class="chart-row" data-row="denied">
+            <div class="box" data-box="denied">Denied</div>
+            <p class="stat stat-deny"><span class="figure-num">1 in 5</span></p>
           </div>
-          <p class="flow-close">Most denied money is never fought for.</p>
+          <div class="chart-row" data-row="appeal">
+            <div class="box" data-box="appeal">Appealed</div>
+            <p class="stat"><span class="figure-num">&lt;1%</span></p>
+          </div>
+          <p class="stat stat-win" data-stat="win"><span class="figure-num">80.7%</span><span class="figure-label">overturned</span></p>
+          <div class="chart-row" data-row="never">
+            <div class="box is-heavy" data-box="never">Never appealed</div>
+            <p class="stat"><span class="figure-num">99%+</span></p>
+          </div>
+          <p class="flow-close" data-row="close">Most denied money is never fought for.</p>
         </div>
         <details class="sources">
           <summary>Sources</summary>

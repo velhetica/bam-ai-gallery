@@ -809,9 +809,9 @@ function spawnRoute() {
   const tail = Math.min(length * 0.42, Math.max(metrics.col + metrics.row, metrics.col * 1.75));
   if (length < tail + metrics.col) return;
   const layers = [
-    { len: tail, opacity: 0.16 },
-    { len: tail * 0.58, opacity: 0.34 },
-    { len: Math.max(metrics.col * 0.45, tail * 0.22), opacity: 0.72 },
+    { len: tail, opacity: 0.24 },
+    { len: tail * 0.58, opacity: 0.51 },
+    { len: Math.max(metrics.col * 0.45, tail * 0.22), opacity: 1 },
   ];
   const paths = layers.map((layer) => {
     const path = document.createElementNS(SVG_NS, 'path');
@@ -1044,123 +1044,87 @@ function pin(el, x, y) {
   el.style.top = `${Math.round(y)}px`;
 }
 
+function headPath(x, y, dir) {
+  const s = 5;
+  if (dir === 'right') return `M ${x - s} ${y - 3.5} L ${x} ${y} L ${x - s} ${y + 3.5}`;
+  if (dir === 'down') return `M ${x - 3.5} ${y - s} L ${x} ${y} L ${x + 3.5} ${y - s}`;
+  return `M ${x - 3.5} ${y + s} L ${x} ${y} L ${x + 3.5} ${y + s}`;
+}
+
 function layoutFlow(section) {
   const board = section.querySelector('[data-flow]');
-  const stage = board?.querySelector('.claim-board');
   const svg = board?.querySelector('.flow-svg');
-  if (!board || !stage || !svg) return null;
+  if (!board || !svg) return null;
   const width = board.clientWidth;
-  if (width < 2) return null;
-  const narrow = window.innerWidth <= 759;
-  const col = metrics?.col || (narrow ? 48 : 96);
-  const row = metrics?.row || (narrow ? 32 : 64);
-  const origin = board.getBoundingClientRect();
-  const gx = (index) => snap((metrics?.originX || origin.left) + index * col - origin.left);
-  const gy = (index) => snap(row + index * row);
-  const practice = stage.querySelector('[data-node="practice"]');
-  const insurer = stage.querySelector('[data-node="insurer"]');
-  const denied = stage.querySelector('[data-node="denied"]');
-  const appeal = stage.querySelector('[data-note="appeal"]');
-  const overturn = stage.querySelector('[data-note="overturn"]');
-  const pileEl = stage.querySelector('[data-pile]');
-  const alignSquare = (node, cx, cy) => {
-    pin(node, 0, 0);
-    const square = node.querySelector('.sq').getBoundingClientRect();
-    const dx = cx - (square.left - origin.left + square.width / 2);
-    const dy = cy - (square.top - origin.top + square.height / 2);
-    pin(node, dx, dy);
-  };
-  let out;
-  let back;
-  let drop;
-  let loop;
-  let slots = [];
-  if (narrow) {
-    const practiceX = gx(2);
-    const insurerX = gx(2);
-    const practiceY = gy(1);
-    const insurerY = gy(5);
-    const dropX = gx(4);
-    const trayY = gy(10);
-    alignSquare(practice, practiceX, practiceY);
-    alignSquare(insurer, insurerX, insurerY);
-    pin(appeal, gx(1) + 6, gy(8));
-    appeal.style.width = `${col * 1.6}px`;
-    pin(pileEl, dropX + 2, gy(8));
-    pileEl.style.width = `${col}px`;
-    pileEl.style.height = `${row * 2}px`;
-    pin(denied, gx(0), gy(11) + 6);
-    denied.style.width = `${Math.max(140, width - 8)}px`;
-    pin(overturn, gx(1), gy(16));
-    overturn.style.width = `${Math.max(140, width - gx(1) - 4)}px`;
-    stage.style.height = `${gy(18)}px`;
-    out = `M ${practiceX} ${practiceY} H ${gx(1)} V ${insurerY} H ${insurerX}`;
-    back = `M ${gx(0)} ${insurerY} V ${practiceY}`;
-    drop = `M ${insurerX} ${insurerY} H ${dropX} V ${trayY}`;
-    loop = `M ${dropX} ${trayY} H ${gx(0)} V ${insurerY}`;
-    const gap = 7;
-    for (let r = 0; r < 4; r += 1) {
-      for (let c = 0; c < 4; c += 1) {
-        slots.push({ x: dropX + 6 + c * gap, y: trayY - 8 - r * gap });
-      }
-    }
-  } else {
-    const usable = Math.max(6, Math.floor((width - 8) / col));
-    const insurerCol = Math.max(5, Math.min(8, usable - 1));
-    const practiceX = gx(1);
-    const practiceY = 56;
-    const insurerX = gx(insurerCol);
-    const backY = 128;
-    const trayY = 292;
-    const loopX = gx(insurerCol - 1);
-    alignSquare(practice, practiceX, practiceY);
-    alignSquare(insurer, insurerX, practiceY);
-    pin(overturn, gx(2), backY + 18);
-    overturn.style.width = '10.5rem';
-    pin(appeal, loopX - 128, 220);
-    appeal.style.width = '6.75rem';
-    pin(pileEl, insurerX + 8, 196);
-    pileEl.style.width = '42px';
-    pileEl.style.height = '96px';
-    const deniedW = Math.min(230, Math.max(168, width - insurerX - 8));
-    denied.style.width = `${deniedW}px`;
-    denied.style.textAlign = 'left';
-    pin(denied, Math.min(insurerX + 8, width - deniedW - 4), trayY + 16);
-    stage.style.height = '460px';
-    out = `M ${practiceX} ${practiceY} H ${insurerX}`;
-    back = `M ${insurerX} ${practiceY} V ${backY} H ${practiceX}`;
-    drop = `M ${insurerX} ${practiceY} V ${trayY}`;
-    loop = `M ${insurerX} ${trayY} H ${loopX} V ${practiceY} H ${insurerX}`;
-    const gap = 7;
-    for (let r = 0; r < 5; r += 1) {
-      for (let c = 0; c < 5; c += 1) {
-        slots.push({ x: insurerX + 12 + c * gap, y: trayY - 8 - r * gap });
-      }
-    }
-  }
   const height = board.clientHeight;
+  if (width < 2 || height < 2) return null;
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
   svg.setAttribute('width', String(width));
   svg.setAttribute('height', String(height));
-  const drawn = {
-    out: svg.querySelector('[data-draw="out"]'),
-    back: svg.querySelector('[data-draw="back"]'),
-    drop: svg.querySelector('[data-draw="drop"]'),
-    loop: svg.querySelector('[data-draw="loop"]'),
+  const origin = board.getBoundingClientRect();
+  const box = (name) => board.querySelector(`[data-box="${name}"]`).getBoundingClientRect();
+  const rel = (rect) => ({
+    left: rect.left - origin.left,
+    right: rect.right - origin.left,
+    top: rect.top - origin.top,
+    bottom: rect.bottom - origin.top,
+    cx: rect.left + rect.width / 2 - origin.left,
+    cy: rect.top + rect.height / 2 - origin.top,
+  });
+  const claim = rel(box('claim'));
+  const insurer = rel(box('insurer'));
+  const paid = rel(box('paid'));
+  const denied = rel(box('denied'));
+  const appeal = rel(box('appeal'));
+  const never = rel(box('never'));
+  const gap = 6;
+  const narrow = window.innerWidth <= 759;
+  const paths = {};
+  const put = (name, d, x, y, dir) => {
+    const shaft = svg.querySelector(`[data-draw="${name}"]`);
+    const head = svg.querySelector(`[data-head="${name}"]`);
+    shaft.setAttribute('d', d);
+    head.setAttribute('d', headPath(x, y, dir));
+    paths[name] = shaft;
   };
-  drawn.out.setAttribute('d', out);
-  drawn.back.setAttribute('d', back);
-  drawn.drop.setAttribute('d', drop);
-  drawn.loop.setAttribute('d', loop);
+  if (narrow) {
+    put('to-insurer', `M ${claim.cx} ${claim.bottom} V ${insurer.top - gap}`, claim.cx, insurer.top - gap, 'down');
+    put('to-paid', `M ${insurer.right} ${insurer.cy} H ${paid.left - gap}`, paid.left - gap, insurer.cy, 'right');
+    put('to-denied', `M ${insurer.cx} ${insurer.bottom} V ${denied.top - gap}`, insurer.cx, denied.top - gap, 'down');
+    put('to-appeal', `M ${denied.right} ${denied.cy} H ${appeal.left - gap}`, appeal.left - gap, denied.cy, 'right');
+    put('rejoin', `M ${appeal.cx} ${appeal.top} V ${paid.bottom + gap}`, appeal.cx, paid.bottom + gap, 'up');
+    put('to-never', `M ${denied.cx} ${denied.bottom} V ${never.top - gap}`, denied.cx, never.top - gap, 'down');
+  } else {
+    put('to-insurer', `M ${claim.right} ${claim.cy} H ${insurer.left - gap}`, insurer.left - gap, claim.cy, 'right');
+    put('to-paid', `M ${insurer.right} ${insurer.cy} H ${paid.left - gap}`, paid.left - gap, insurer.cy, 'right');
+    put('to-denied', `M ${insurer.cx} ${insurer.bottom} V ${denied.top - gap}`, insurer.cx, denied.top - gap, 'down');
+    put('to-appeal', `M ${denied.right} ${denied.cy} H ${appeal.left - gap}`, appeal.left - gap, denied.cy, 'right');
+    put('rejoin', `M ${appeal.cx} ${appeal.top} V ${paid.bottom + gap}`, appeal.cx, paid.bottom + gap, 'up');
+    put('to-never', `M ${denied.cx} ${denied.bottom} V ${never.top - gap}`, denied.cx, never.top - gap, 'down');
+  }
+  const win = board.querySelector('[data-stat="win"]');
+  if (win) {
+    const winW = win.offsetWidth || 72;
+    const winH = win.offsetHeight || 36;
+    let left = appeal.cx + 14;
+    let top = (paid.bottom + appeal.top) / 2 - winH / 2;
+    if (left + winW > width - 2) left = Math.max(4, appeal.cx - winW - 12);
+    if (top < paid.bottom + 4) top = paid.bottom + 4;
+    if (top + winH > appeal.top - 4) top = Math.max(paid.bottom + 4, appeal.top - winH - 4);
+    pin(win, left, top);
+  }
   const played = section.dataset.played === '1' || reduced;
-  Object.values(drawn).forEach((path) => {
+  Object.values(paths).forEach((path) => {
     const length = path.getTotalLength() || 1;
     path.style.strokeDasharray = `${length}`;
     path.style.strokeDashoffset = played ? '0' : `${length}`;
   });
-  svg._story = { ...drawn, slots, narrow };
+  svg.querySelectorAll('[data-head]').forEach((head) => {
+    head.style.opacity = played ? '1' : '0';
+  });
   return svg;
 }
+
 
 function prepareJourney(section) {
   layoutFlow(section);
@@ -1183,15 +1147,17 @@ function flowSvg(section) {
 function drawJourney(section, tl, start) {
   const svg = flowSvg(section);
   if (!svg) return;
-  const paths = [...svg.querySelectorAll('path[data-draw]')];
-  paths.forEach((path, index) => {
+  const order = ['to-insurer', 'to-paid', 'to-denied', 'to-appeal', 'rejoin', 'to-never'];
+  order.forEach((name, index) => {
+    const path = svg.querySelector(`[data-draw="${name}"]`);
+    const head = svg.querySelector(`[data-head="${name}"]`);
+    if (!path) return;
     const length = path.getTotalLength() || 1;
     path.style.strokeDasharray = `${length}`;
-    const longer = path.dataset.draw === 'loop' || path.dataset.draw === 'back';
-    tl.fromTo(path, { strokeDashoffset: length }, { strokeDashoffset: 0, duration: longer ? 1.05 : 0.8, ease: 'power1.out' }, start + index * 0.14);
+    const at = start + index * 0.22;
+    tl.fromTo(path, { strokeDashoffset: length }, { strokeDashoffset: 0, duration: 0.42, ease: 'power1.out' }, at);
+    if (head) tl.to(head, { opacity: 1, duration: 0.12, ease: 'none' }, at + 0.32);
   });
-  const paid = section.querySelector('.sq.is-paid');
-  if (paid) tl.to(paid, { opacity: 1, duration: 0.25, ease: 'none' }, start + Math.max(0.4, paths.length * 0.16));
 }
 
 let moneyOn = false;
@@ -1327,6 +1293,7 @@ function moneyFrame(now) {
 }
 
 function seedPile(section) {
+  return;
   const svg = flowSvg(section);
   const story = storyOf(svg);
   const host = section.querySelector('.packets');
@@ -1342,6 +1309,7 @@ function seedPile(section) {
 }
 
 function startMoney() {
+  return;
   if (reduced || moneyOn) return;
   const section = document.querySelector('.story-industry');
   moneyOn = true;
@@ -1357,6 +1325,7 @@ function stopMoney() {
 }
 
 function freezePackets(section) {
+  return;
   const svg = flowSvg(section);
   const host = svg && svg.parentElement.querySelector('.packets');
   const story = storyOf(svg);

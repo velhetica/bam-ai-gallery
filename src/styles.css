@@ -584,8 +584,139 @@ h1 {
   margin-bottom: 2.5rem;
 }
 
-.flow {
+.flow,
+.chart {
   position: relative;
+}
+
+.chart {
+  display: grid;
+  grid-template-columns: max-content 5rem max-content 5.5rem max-content;
+  grid-template-rows: auto 3.5rem auto 3.75rem auto auto;
+  align-items: center;
+  justify-items: start;
+  width: min(100%, 64rem);
+  margin-top: 0.25rem;
+}
+
+.chart-svg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.chart-row {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.chart [data-row="claim"] { grid-column: 1; grid-row: 1; }
+.chart [data-row="insurer"] { grid-column: 3; grid-row: 1; }
+.chart [data-row="paid"] { grid-column: 5; grid-row: 1; }
+.chart [data-row="denied"] { grid-column: 3; grid-row: 3; }
+.chart [data-row="appeal"] { grid-column: 5; grid-row: 3; }
+.chart [data-row="never"] { grid-column: 3; grid-row: 5; }
+.chart [data-row="close"] { grid-column: 1 / -1; grid-row: 6; }
+
+.chart .flow-close {
+  position: relative;
+  margin-top: 1.5rem;
+  max-width: 11em;
+  font-size: 28px;
+}
+
+.chart .stat-deny {
+  position: absolute;
+  right: calc(100% + 0.85rem);
+  top: 0.7rem;
+  width: max-content;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.box {
+  border: 1px solid rgba(233, 226, 210, 0.72);
+  padding: 0.8rem 1rem;
+  color: #e9e2d2;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  background: transparent;
+}
+
+.chart [data-box="claim"],
+.chart [data-box="insurer"],
+.chart [data-box="denied"] {
+  min-width: 7.25rem;
+}
+
+.chart [data-box="paid"],
+.chart [data-box="appeal"] {
+  min-width: 11.25rem;
+}
+
+.box.is-paid {
+  border-color: #c8b994;
+  color: #c8b994;
+}
+
+.box.is-heavy {
+  border-width: 1.5px;
+  border-color: #e9e2d2;
+  min-width: 12.75rem;
+  padding: 1.05rem 1.2rem;
+  color: #e9e2d2;
+  font-size: 15px;
+}
+
+.chart .stat {
+  margin: 0;
+}
+
+.chart .stat .figure-num {
+  margin: 0;
+  font-size: 1.65rem;
+  letter-spacing: -0.03em;
+}
+
+.chart .stat .figure-label {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 12px;
+}
+
+.chart .stat-win {
+  position: absolute;
+  z-index: 2;
+  margin: 0;
+}
+
+.chart .stat-win .figure-num {
+  font-size: 1.2rem;
+}
+
+.chart-svg path.is-champ {
+  stroke: #c8b994;
+}
+
+.chart-svg path.is-thin {
+  stroke: rgba(233, 226, 210, 0.5);
+}
+
+.chart-svg path[data-head] {
+  fill: none;
+  opacity: 0;
 }
 
 .claim-board {
@@ -605,8 +736,8 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.35rem;
-  width: 5.5rem;
+  gap: 0.4rem;
+  width: max-content;
   padding-top: 0;
 }
 
@@ -624,7 +755,28 @@ h1 {
 
 .claim-board .figure-num {
   width: max-content;
-  margin-top: 0.2rem;
+  margin-top: 0;
+}
+
+.claim-board [data-note="denied"] .figure-num {
+  font-size: 2.75rem;
+}
+
+.claim-board [data-note="denied"] .figure-label + .figure-label {
+  max-width: 22ch;
+}
+
+.claim-board [data-note="appeal"] .node-name,
+.claim-board [data-note="win"] .node-name {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.claim-board .sq.is-claim {
+  width: 10px;
+  height: 10px;
+  background: #aba393;
+  border-color: #aba393;
 }
 
 .flow-tag {
@@ -637,23 +789,36 @@ h1 {
 }
 
 .flow-close {
-  margin: 2.25rem 0 0;
-  max-width: 16em;
+  position: absolute;
+  margin: 0;
+  max-width: 18em;
   color: var(--cream);
   font-family: var(--display);
   font-weight: 300;
-  font-size: clamp(1.35rem, 2vw, 1.85rem);
-  letter-spacing: -0.01em;
+  font-size: 32px;
+  letter-spacing: -0.02em;
   line-height: 1.15;
 }
 
 .claim {
   position: absolute;
-  width: 4px;
-  height: 4px;
-  margin: -2px 0 0 -2px;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
   background: #aba393;
   pointer-events: none;
+}
+
+.claim.is-pile,
+.claim.is-hook,
+.claim.is-trail {
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+}
+
+.claim.is-trail {
+  background: #aba393;
 }
 
 .claim.is-won {
@@ -780,6 +945,16 @@ body.is-works .ledger-accent {
   stroke: #e9e2d2;
   stroke-width: 1;
   shape-rendering: crispEdges;
+}
+
+.flow-svg path.is-hook {
+  stroke: rgba(233, 226, 210, 0.38);
+}
+
+.flow-svg path.chevron {
+  stroke: rgba(233, 226, 210, 0.75);
+  stroke-linecap: square;
+  stroke-linejoin: miter;
 }
 
 .callout {
@@ -1087,8 +1262,67 @@ body.is-works .ledger-accent {
     height: 36rem;
   }
 
+  .chart {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: none;
+    gap: 4.25rem 0.65rem;
+    width: 100%;
+  }
+
+  .chart .stat-deny {
+    position: static;
+    right: auto;
+    top: auto;
+  }
+
+  .chart [data-row="claim"] { grid-column: 1; grid-row: 1; }
+  .chart [data-row="insurer"] { grid-column: 1; grid-row: 2; }
+  .chart [data-row="paid"] { grid-column: 2; grid-row: 2; }
+  .chart [data-row="denied"] { grid-column: 1; grid-row: 3; }
+  .chart [data-row="appeal"] { grid-column: 2; grid-row: 3; }
+  .chart [data-row="never"] { grid-column: 1 / 3; grid-row: 4; }
+  .chart [data-row="close"] { grid-column: 1 / 3; grid-row: 5; }
+
+  .chart-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .chart [data-box="paid"],
+  .chart [data-box="appeal"],
+  .chart [data-box="claim"],
+  .chart [data-box="insurer"],
+  .chart [data-box="denied"] {
+    min-width: 0;
+  }
+
+  .box {
+    padding: 0.65rem 0.75rem;
+    font-size: 13px;
+  }
+
+  .box.is-heavy {
+    min-width: 0;
+    font-size: 14px;
+  }
+
+  .chart .stat .figure-num {
+    font-size: 1.35rem;
+  }
+
   .claim-board .flow-node {
-    width: 4.75rem;
+    width: max-content;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .claim-board [data-note="denied"] .figure-num {
+    font-size: 1.7rem;
+  }
+
+  .flow-close {
+    font-size: 22px;
   }
 
   .flow-tag .figure-num,
