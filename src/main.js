@@ -1099,8 +1099,8 @@ function layoutFlow(section) {
     put('to-paid', `M ${rail} ${paid.cy} H ${paid.left - gap}`, paid.left - gap, paid.cy, 'right');
     put('to-denied', `M ${rail} ${insurer.bottom} V ${denied.top - gap}`, rail, denied.top - gap, 'down');
     put('to-appeal', `M ${rail} ${appeal.cy} H ${appeal.left - gap}`, appeal.left - gap, appeal.cy, 'right');
-    const railX = paid.right + gap + head + run;
-    put('rejoin', `M ${railX} ${appeal.cy} V ${paid.cy} H ${paid.right + gap}`, paid.right + gap, paid.cy, 'left');
+    const loopX = Math.min(width - 16, Math.max(appeal.right, paid.right) + 24);
+    put('rejoin', `M ${appeal.right} ${appeal.cy} H ${loopX} V ${paid.cy} H ${paid.right}`, paid.right, paid.cy, 'left');
     put('to-never', `M ${rail} ${denied.bottom} V ${never.top - gap}`, rail, never.top - gap, 'down');
   } else if (narrow) {
     put('to-insurer', `M ${spine} ${claim.bottom} V ${insurer.top - gap}`, spine, insurer.top - gap, 'down');
@@ -1125,8 +1125,8 @@ function layoutFlow(section) {
     let left;
     let top;
     if (stack) {
-      const railX = paid.right + gap + 11 + 28;
-      left = Math.max(4, railX - winW - clear);
+      const loopX = Math.min(width - 16, Math.max(appeal.right, paid.right) + 24);
+      left = Math.max(4, Math.min(paid.right - winW, loopX - winW - clear));
       top = paid.bottom + 14;
       if (top + winH > denied.top - 12) top = Math.max(paid.bottom + 12, denied.top - winH - 12);
     } else {
