@@ -607,12 +607,9 @@ h1 {
   max-width: 72rem;
 }
 
-.study {
-  scroll-margin-top: 8.5rem;
-}
-
 .study-label {
   margin: 0 0 1.75rem;
+  scroll-margin-top: calc(var(--mast, 88px) + 16px);
   color: #aba393;
   font-family: var(--sans);
   font-size: 16px;
@@ -802,8 +799,100 @@ h1 {
   flex: none;
 }
 
+.units {
+  display: flex;
+  align-items: center;
+  gap: 2.75rem;
+}
+
+.unit {
+  margin: 0;
+}
+
+.unit-name {
+  margin: 0 0 0.85rem;
+  color: #e9e2d2;
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.unit-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 12px);
+  gap: 4px;
+  width: max-content;
+}
+
+.unit-grid .cell {
+  display: block;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+}
+
+.unit-grid.is-claims .cell {
+  border: 1px solid #aba393;
+  background: transparent;
+}
+
+.unit-grid.is-claims .cell.is-fill {
+  border-color: #e9e2d2;
+  background: #e9e2d2;
+}
+
+.unit-grid.is-denied .cell {
+  position: relative;
+  border: 1px solid #e9e2d2;
+  background: transparent;
+}
+
+.unit-grid .cell.is-sliver i {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  bottom: 1px;
+  width: 3px;
+  background: #c8b994;
+}
+
+.unit-key {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0.9rem 0 0;
+  color: #e9e2d2;
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.unit-key-sliver {
+  width: max-content;
+  margin-left: auto;
+}
+
+.unit-arrow {
+  width: 4rem;
+  height: 12px;
+  flex: none;
+  fill: none;
+  stroke: #aba393;
+  stroke-width: 1;
+}
+
 @media (max-width: 759px) {
   .studies { gap: 4.5rem; }
+  .units {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.35rem;
+  }
+  .unit-arrow {
+    transform: rotate(90deg);
+    margin-left: 3.4rem;
+  }
   .road {
     grid-template-columns: auto 1.15rem auto 1.15rem auto;
     column-gap: 0.45rem;
@@ -1113,16 +1202,6 @@ body.is-works .ledger-accent {
   margin: 0.45rem 0 0;
   color: #aba393;
   font-size: 16px;
-}
-
-.step-cell {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 18px;
-  height: 18px;
-  background: #e9e2d2;
-  opacity: 1;
 }
 
 .story-works .story-title {
@@ -1516,7 +1595,6 @@ body.is-works .ledger-accent {
 
   .gauge-mark,
   .mast-tick,
-  .step-cell,
   .sq.is-paid {
     opacity: 1;
   }
