@@ -1137,7 +1137,7 @@ function layoutFlow(section) {
 function prepareJourney(section) {
   layoutFlow(section);
   if (reduced) {
-    section.querySelectorAll('.sq.is-paid, .step-cell').forEach((el) => {
+    section.querySelectorAll('.sq.is-paid').forEach((el) => {
       el.style.opacity = '1';
     });
     section.querySelectorAll('.step').forEach((step) => {
@@ -1378,7 +1378,6 @@ function enterWorks(section) {
   if (section.dataset.played) return;
   section.dataset.played = '1';
   const steps = [...section.querySelectorAll('.step')];
-  const marker = section.querySelector('.step-cell');
   if (reduced) return;
   const tl = gsap.timeline();
   steps.forEach((step) => {
@@ -1386,7 +1385,6 @@ function enterWorks(section) {
   });
   const eyebrow = section.querySelector('.eyebrow .line');
   if (eyebrow) plotInk(eyebrow, tl, 0, 0.55);
-  if (marker && steps[0]) marker.style.top = `${steps[0].offsetTop}px`;
 }
 
 function boot() {
