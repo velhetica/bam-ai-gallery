@@ -51,38 +51,48 @@
           <span class="line"><span>Insurers deny.</span></span>
           <span class="line"><span>Almost nobody fights back.</span></span>
         </h2>
-        <div class="chart" data-flow>
-          <svg class="chart-svg flow-svg" aria-hidden="true">
-            <path data-draw="to-insurer" />
-            <path data-head="to-insurer" />
-            <path data-draw="to-paid" class="is-champ" />
-            <path data-head="to-paid" class="is-champ" />
-            <path data-draw="to-denied" />
-            <path data-head="to-denied" />
-            <path data-draw="to-appeal" />
-            <path data-head="to-appeal" />
-            <path data-draw="rejoin" />
-            <path data-head="rejoin" />
-            <path data-draw="to-never" />
-            <path data-head="to-never" />
-          </svg>
-          <div class="chart-row" data-row="claim"><div class="box" data-box="claim">Claim</div></div>
-          <div class="chart-row" data-row="insurer"><div class="box" data-box="insurer">Insurer</div></div>
-          <div class="chart-row" data-row="paid"><div class="box is-paid" data-box="paid">Paid → Practice</div></div>
-          <div class="chart-row" data-row="denied">
-            <div class="box" data-box="denied">Denied</div>
-            <p class="stat stat-deny"><span class="figure-num">1 in 5</span></p>
-          </div>
-          <div class="chart-row" data-row="appeal">
-            <div class="box" data-box="appeal">Appealed</div>
-            <p class="stat"><span class="figure-num">&lt;1%</span></p>
-          </div>
-          <p class="stat stat-win" data-stat="win"><span class="figure-num">80.7%</span><span class="figure-label">overturned</span></p>
-          <div class="chart-row" data-row="never">
-            <div class="box is-heavy" data-box="never">Never appealed</div>
-            <p class="stat"><span class="figure-num">99%+</span></p>
-          </div>
-          <p class="flow-close" data-row="close">Most denied money is never fought for.</p>
+        <div class="studies">
+          <article class="study">
+            <h3 class="study-label">Option 1</h3>
+            <div class="road">
+              <p class="road-step at-claims">Claims</p>
+              <span class="road-link at-to-insurer" aria-hidden="true"></span>
+              <p class="road-step at-insurer">Insurer</p>
+              <span class="road-link at-to-paid" aria-hidden="true"></span>
+              <p class="road-step at-paid is-paid">Paid</p>
+              <div class="road-dead">
+                <span class="road-drop" aria-hidden="true"></span>
+                <p>1 in 5 denied</p>
+                <span class="road-drop" aria-hidden="true"></span>
+                <p class="road-final">99%+ never appealed</p>
+              </div>
+            </div>
+            <p class="study-note">Under 1% of denials are appealed. 80.7% of appeals are overturned.</p>
+            <p class="study-close">Most denied money is never fought for.</p>
+          </article>
+          <article class="study">
+            <h3 class="study-label">Option 2</h3>
+            <div class="trio">
+              <p><b>1 in 5</b><span>denied</span></p>
+              <svg class="trio-arrow" viewBox="0 0 64 12" aria-hidden="true"><line x1="0" y1="6" x2="52" y2="6"/><polyline points="46,1.5 54,6 46,10.5"/></svg>
+              <p><b>&lt;1%</b><span>appealed</span></p>
+              <svg class="trio-arrow" viewBox="0 0 64 12" aria-hidden="true"><line x1="0" y1="6" x2="52" y2="6"/><polyline points="46,1.5 54,6 46,10.5"/></svg>
+              <p class="is-win"><b>80.7%</b><span>overturned</span></p>
+            </div>
+            <p class="study-note">Of the denials, 99%+ are never appealed.</p>
+            <p class="study-close">Most denied money is never fought for.</p>
+          </article>
+          <article class="study">
+            <h3 class="study-label">Option 3</h3>
+            <p class="bar-kicker">1 in 5 claims are denied</p>
+            <div class="share" role="img" aria-label="Of denied claims, under 1 percent are appealed and 99 percent plus are never fought for">
+              <div class="share-rest"><span>99%+ never fought for</span></div>
+              <div class="share-sliver"></div>
+            </div>
+            <p class="sliver-label"><span class="leader" aria-hidden="true"></span>Under 1% appealed</p>
+            <p class="study-note">Of every denied claim: under 1% appealed. 80.7% of appeals win.</p>
+            <p class="study-close">Most denied money is never fought for.</p>
+          </article>
         </div>
         <details class="sources">
           <summary>Sources</summary>

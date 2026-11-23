@@ -263,11 +263,7 @@ function build() {
   const accent = document.createElement('div');
   accent.className = 'ledger-accent';
   accent.append(accentShift);
-  const float = document.createElement('div');
-  float.className = 'ledger-float';
-  cell = document.createElement('div');
-  cell.className = 'ledger-cell';
-  float.append(cell);
+  cell = null;
 
   const baseLines = [];
   headRows = [];
@@ -296,7 +292,6 @@ function build() {
   });
 
   ledger.replaceChildren(base, accent);
-  document.body.append(float);
   headIndex = -1;
 
   const mastEl = document.querySelector('.mast');
@@ -513,19 +508,8 @@ function applyCircle(progress) {
   accent.style.setProperty('--mask-r', `${target.radius * reveal * breath}px`);
 }
 
-function applyHead(progress) {
-  const count = headRows.length;
-  if (!count) return;
-  const base = Math.min(count - 1, Math.max(0, Math.round(progress * (count - 1))));
-  const index = (base + headDrift) % count;
-  if (index === headIndex) return;
-  if (headIndex >= 0) {
-    headRows[headIndex]?.classList.remove('is-head');
-    accentRows[headIndex]?.classList.remove('is-head');
-  }
-  headIndex = index;
-  headRows[index]?.classList.add('is-head');
-  accentRows[index]?.classList.add('is-head');
+function applyHead() {
+  return;
 }
 
 function scrollProgress() {
@@ -621,8 +605,9 @@ function hostFor(el) {
   return { ink: el, pen };
 }
 
-function plotInk(el, tl, at, duration) {
-  const { ink, pen } = hostFor(el);
+function plotInk() {
+  return;
+  const { ink, pen } = hostFor(arguments[0]);
   if (reduced) {
     ink.style.clipPath = 'none';
     pen.style.opacity = '0';
@@ -797,6 +782,7 @@ function applyQuiet() {
 }
 
 function spawnRoute() {
+  return;
   if (reduced || document.hidden || !routeLayer || activeRoutes.length >= 1 || sectionEngaged('#industry') || sectionEngaged('#works')) return;
   const points = routePoints();
   if (!points) return;
@@ -951,6 +937,7 @@ function ambientFrame(now) {
 }
 
 function startAmbient() {
+  return;
   if (reduced || ambientOn) return;
   ambientOn = true;
   lastHeadStep = performance.now();
@@ -973,12 +960,6 @@ function playIntro(lines) {
   intro.fromTo(lines, { opacity: 0 }, { opacity: 1, duration: 0.45, ease: 'power2.out' }, 0);
   drawMast(intro, 0.35);
   placeCell(0, false);
-  intro.fromTo(
-    cell,
-    { clipPath: 'inset(0 0 100% 100%)' },
-    { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.4, ease: 'power2.out' },
-    1.15,
-  );
   const grow = { value: 0 };
   intro.to(
     grow,
@@ -1055,6 +1036,7 @@ function headPath(x, y, dir) {
 
 function layoutFlow(section) {
   const board = section.querySelector('[data-flow]');
+  if (!board?.querySelector('[data-node="insurer"] .sq')) return null;
   const svg = board?.querySelector('.flow-svg');
   if (!board || !svg) return null;
   const width = board.clientWidth;
@@ -1399,26 +1381,12 @@ function enterWorks(section) {
   const marker = section.querySelector('.step-cell');
   if (reduced) return;
   const tl = gsap.timeline();
-  steps.forEach((step, index) => {
-    const rule = { value: 0 };
-    tl.to(rule, {
-      value: 1,
-      duration: 0.55,
-      ease: 'power1.out',
-      onUpdate: () => step.style.setProperty('--rule', rule.value),
-    }, index * 0.12);
-    const line = step.querySelector('.line');
-    if (line) plotInk(line, tl, 0.08 + index * 0.12, 0.62);
+  steps.forEach((step) => {
+    step.style.setProperty('--rule', '1');
   });
   const eyebrow = section.querySelector('.eyebrow .line');
   if (eyebrow) plotInk(eyebrow, tl, 0, 0.55);
-  [...section.querySelectorAll('.story-title .line')].forEach((line, index) => {
-    plotInk(line, tl, 0.08 + index * 0.12, 0.72);
-  });
-  if (!marker || !steps.length) return;
-  steps.forEach((step, index) => {
-    tl.to(marker, { top: step.offsetTop, duration: 0.26, ease: 'power2.out' }, 0.35 + index * 0.28);
-  });
+  if (marker && steps[0]) marker.style.top = `${steps[0].offsetTop}px`;
 }
 
 function boot() {
