@@ -41,7 +41,7 @@ function gridMetrics() {
   const narrow = window.innerWidth < 768;
   const colPx = Math.max(1, Math.round((narrow ? 48 : 96) * dpr));
   const rowPx = Math.max(1, Math.round((narrow ? 32 : 64) * dpr));
-  const mark = wordmark?.getBoundingClientRect().left || 0;
+  const mark = document.querySelector('.wordmark-slot')?.getBoundingClientRect().left || wordmark?.getBoundingClientRect().left || 0;
   return {
     line: 1 / dpr,
     col: colPx / dpr,
@@ -317,7 +317,7 @@ function applyBand() {
     document.body.insertBefore(band, document.querySelector('.mast'));
   }
   band.style.height = `${bandHeight}px`;
-  band.style.background = '#080807';
+  band.style.background = document.body.classList.contains('is-docked') ? '#080807' : 'transparent';
   document.documentElement.style.setProperty('--mast', `${bandHeight}px`);
   ledger.style.webkitMaskImage = 'none';
   ledger.style.maskImage = 'none';
@@ -527,6 +527,31 @@ function plateIndex(scrollY) {
   return current;
 }
 
+function dockWordmark() {
+  const slot = document.querySelector('.wordmark-slot');
+  const space = document.querySelector('.wordmark-hero');
+  if (!wordmark || !slot || !space) return;
+  const slotR = slot.getBoundingClientRect();
+  const spaceR = space.getBoundingClientRect();
+  wordmark.style.top = `${slotR.top}px`;
+  wordmark.style.left = `${slotR.left}px`;
+  wordmark.style.width = `${slotR.width}px`;
+  const travel = spaceR.top + window.scrollY - slotR.top;
+  let progress = travel <= 1 ? 1 : Math.min(1, Math.max(0, window.scrollY / travel));
+  if (reduced) progress = progress >= 1 ? 1 : 0;
+  const resting = space.offsetWidth / slot.offsetWidth;
+  const scale = resting + (1 - resting) * progress;
+  const tx = (spaceR.left - slotR.left) * (1 - progress);
+  const ty = Math.max(0, spaceR.top - slotR.top);
+  wordmark.style.transform = `translate(${tx.toFixed(2)}px, ${ty.toFixed(2)}px) scale(${scale.toFixed(4)})`;
+  const docked = progress >= 0.999;
+  if (document.body.classList.contains('is-docked') !== docked) {
+    document.body.classList.toggle('is-docked', docked);
+    const band = document.querySelector('.mast-band');
+    if (band) band.style.background = docked ? '#080807' : 'transparent';
+  }
+}
+
 function applyField() {
   const hero = document.querySelector('.room-hero');
   const away = !hero || hero.getBoundingClientRect().bottom < window.innerHeight * 0.5;
@@ -547,6 +572,7 @@ function applyScroll() {
   applyGauge(progress);
   applyQuiet();
   applyField();
+  dockWordmark();
   clearMast();
   if (!introDone) return;
   const next = plateIndex(window.scrollY);
@@ -1448,6 +1474,7 @@ function boot() {
   else window.addEventListener('scroll', () => {
     applyQuiet();
     applyField();
+    dockWordmark();
     clearMast();
   }, { passive: true });
   applyQuiet();
