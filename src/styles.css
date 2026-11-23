@@ -615,6 +615,7 @@ h1 {
 }
 
 .facts {
+  container-type: inline-size;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 4.5rem 0 0;
@@ -624,7 +625,6 @@ h1 {
 
 .fact {
   position: relative;
-  container-type: inline-size;
   min-width: 0;
   padding: 0 0 0 32px;
 }
@@ -648,10 +648,10 @@ h1 {
   color: #e9e2d2;
   font-family: var(--display);
   font-weight: 300;
-  font-size: min(8.125rem, 46cqi);
+  font-size: min(8.125rem, calc((100cqi / 4 - 32px) / 2.2));
   font-variant-numeric: lining-nums;
   letter-spacing: -0.03em;
-  line-height: 0.84;
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -673,17 +673,18 @@ h1 {
   margin-right: 0.04em;
   font-size: 0.55em;
   line-height: 1;
-  vertical-align: 0.28em;
+  vertical-align: top;
+  transform: translateY(0.38em);
 }
 
 .fact-num sup {
-  position: relative;
-  top: 0.12em;
+  display: inline-block;
   font-size: 0.42em;
   font-weight: 300;
   letter-spacing: 0;
   line-height: 1;
   vertical-align: top;
+  transform: translateY(0.1em);
 }
 
 .fact-cap {
@@ -1364,6 +1365,10 @@ body.is-works .section-rule {
     row-gap: 2.75rem;
   }
 
+  .fact-num {
+    font-size: min(8.125rem, calc(100cqi / 4.4));
+  }
+
   .fact,
   .fact:first-child {
     padding-left: 0;
@@ -1379,6 +1384,17 @@ body.is-works .section-rule {
 
   .fact:nth-child(even)::before {
     content: "";
+  }
+}
+
+@media (max-width: 600px) {
+  .ledger-line,
+  .ledger-line.is-head {
+    background: rgba(233, 226, 210, 0.12);
+  }
+
+  body.is-field-dim .ledger {
+    opacity: 0.5;
   }
 }
 
