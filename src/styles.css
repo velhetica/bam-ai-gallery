@@ -684,7 +684,7 @@ h1 {
   letter-spacing: 0;
   line-height: 1;
   vertical-align: top;
-  transform: translateY(0.1em);
+  transform: translateY(calc(0.1em + 0.025em / 0.42));
 }
 
 .fact-cap {
