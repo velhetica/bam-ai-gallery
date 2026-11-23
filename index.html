@@ -51,53 +51,46 @@
           <span class="line"><span>Insurers deny.</span></span>
           <span class="line"><span>Almost nobody fights back.</span></span>
         </h2>
-        <div class="flow" data-flow>
-          <svg class="flow-svg" aria-hidden="true">
-            <path data-draw="main" d="" />
-            <path data-draw="leak" d="" />
-            <path data-draw="curve" d="" />
-          </svg>
-          <div class="packets" aria-hidden="true"></div>
-          <div class="flow-board">
-            <div class="flow-node" data-node="insurer">
-              <i class="sq"></i>
-              <div class="node-copy">
-                <span class="node-name">Insurer</span>
-              </div>
+        <div class="studies">
+          <article class="study">
+            <p class="study-label">Option 1</p>
+            <div class="road">
+              <p class="road-step">Claims</p>
+              <span class="road-link" aria-hidden="true"></span>
+              <p class="road-step">Insurer</p>
+              <span class="road-link is-paid" aria-hidden="true"></span>
+              <p class="road-step is-paid">Paid <span>to the practice</span></p>
             </div>
-            <div class="flow-node" data-node="denied">
-              <i class="sq"></i>
-              <div class="node-copy">
-                <span class="node-name">Denied</span>
-                <span class="figure-num">1 in 5</span>
-                <span class="figure-label">in-network claims denied by ACA marketplace plans in 2023</span>
-              </div>
+            <div class="road-stop">
+              <span class="road-drop" aria-hidden="true"></span>
+              <p>1 in 5 denied</p>
+              <p class="road-dead">99%+ never appealed</p>
             </div>
-            <div class="flow-node" data-node="appeal">
-              <i class="sq"></i>
-              <div class="node-copy">
-                <span class="node-name">Appeal</span>
-                <span class="figure-num">&lt;1%</span>
-                <span class="figure-label">of those denials were ever appealed</span>
-              </div>
+            <p class="study-note">Under 1% of those denials are appealed. 80.7% of appeals are overturned.</p>
+            <p class="study-close">Most denied money is never fought for.</p>
+          </article>
+          <article class="study">
+            <p class="study-label">Option 2</p>
+            <div class="trio">
+              <p><b>1 in 5</b><span>denied</span></p>
+              <i aria-hidden="true"></i>
+              <p><b>&lt;1%</b><span>appealed</span></p>
+              <i aria-hidden="true"></i>
+              <p class="is-win"><b>80.7%</b><span>overturned</span></p>
             </div>
-            <div class="flow-node is-rejoin" data-node="rejoin">
-              <div class="node-copy">
-                <span class="figure-num">80.7%</span>
-                <span class="figure-label">of appealed Medicare Advantage prior auth denials were overturned in 2024</span>
-              </div>
+            <p class="study-note">Of the denials, 99%+ are never appealed. The rest of claims are paid to the practice.</p>
+            <p class="study-close">Most denied money is never fought for.</p>
+          </article>
+          <article class="study">
+            <p class="study-label">Option 3</p>
+            <p class="bar-kicker">1 in 5 claims are denied</p>
+            <div class="share" role="img" aria-label="Of denied claims, under 1 percent are appealed and 99 percent plus are never fought for">
+              <div class="share-rest"><span>99%+ never fought for</span></div>
+              <div class="share-sliver" title="Appealed, under 1%"></div>
             </div>
-            <div class="flow-node" data-node="practice">
-              <i class="sq is-paid"></i>
-              <div class="node-copy">
-                <span class="node-name">Practice</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="callout-row">
-          <p class="callout"><span class="line"><span class="figure-num">13 hours</span></span><span class="figure-label">a week minimum per physician on prior authorization</span></p>
-          <p class="callout"><span class="line"><span class="figure-num">1.2 seconds</span></span><span class="figure-label">Average time per denied claim in Cigna’s PxDx system. Cigna disputes the characterization.</span></p>
+            <p class="share-key">The champagne sliver is appealed, under 1%. 80.7% of those appeals are overturned. Other claims are paid to the practice.</p>
+            <p class="study-close">Most denied money is never fought for.</p>
+          </article>
         </div>
         <ol class="sources">
           <li>KFF, Claims Denials and Appeals in ACA Marketplace Plans in 2023 (19.7% of 436M in-network claims; insurer range 1% to 54%).</li>
