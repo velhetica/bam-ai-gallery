@@ -432,13 +432,36 @@ h1 .line:last-child {
   right: 0;
   z-index: 31;
   padding: calc(clamp(1.2rem, 2.4vh, 1.85rem) + env(safe-area-inset-top)) var(--datum) 1.05rem;
-  background: #080807;
+  background: transparent;
+  border-bottom: 1px solid rgba(233, 226, 210, 0.22);
+  box-shadow: none;
   pointer-events: none;
 }
 
-.wordmark {
+body.is-docked .mast {
+  background: #080807;
+  border-bottom-color: transparent;
+}
+
+.wordmark-slot {
   display: block;
   width: 11.25rem;
+  aspect-ratio: 618 / 78;
+}
+
+.wordmark-hero {
+  width: min(100%, 28.125rem);
+  aspect-ratio: 618 / 78;
+  margin: 0 0 3rem;
+}
+
+.wordmark {
+  position: fixed;
+  z-index: 32;
+  display: block;
+  width: 11.25rem;
+  margin: 0;
+  transform-origin: 0 0;
   pointer-events: auto;
   color: var(--cream);
 }
@@ -466,9 +489,141 @@ main {
 
 .room-hero {
   align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
   overflow: visible;
   padding-top: calc(6.5rem + 6vh);
   padding-bottom: max(3.5rem, 9vh);
+}
+
+.hero-phone {
+  flex: none;
+  align-self: flex-end;
+  pointer-events: none;
+}
+
+.phone {
+  position: relative;
+  width: auto;
+  height: min(620px, calc(100dvh - 14rem));
+  aspect-ratio: 71.5 / 149.6;
+  padding: 11px;
+  border-radius: 44px;
+  background:
+    linear-gradient(155deg, #8a857c 0%, #3c3a36 16%, #1a1918 42%, #2e2c29 78%, #6a655e 100%);
+  box-shadow: inset 0 0 0 1px rgba(233, 226, 210, 0.35);
+}
+
+.phone-btn {
+  position: absolute;
+  width: 3px;
+  border-radius: 2px;
+  background: #2a2826;
+  box-shadow: inset 0 0 0 1px rgba(233, 226, 210, 0.18);
+}
+
+.phone-btn-action {
+  left: -3px;
+  top: 16%;
+  height: 5%;
+}
+
+.phone-btn-up {
+  left: -3px;
+  top: 24%;
+  height: 9%;
+}
+
+.phone-btn-down {
+  left: -3px;
+  top: 35%;
+  height: 9%;
+}
+
+.phone-btn-side {
+  right: -3px;
+  top: 27%;
+  height: 15%;
+}
+
+.phone-screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 3.1rem 1rem 1.15rem;
+  border-radius: 34px;
+  background: #080807;
+  overflow: hidden;
+}
+
+.phone-island {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  width: 34%;
+  height: 22px;
+  border-radius: 20px;
+  background: #000;
+  transform: translateX(-50%);
+}
+
+.app-kicker {
+  margin: 0;
+  color: #aba393;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-amount {
+  margin: 0.35rem 0 1.35rem;
+  color: #e9e2d2;
+  font-family: var(--display);
+  font-weight: 300;
+  font-size: clamp(1.8rem, 2.4vw, 2.6rem);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.app-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid rgba(233, 226, 210, 0.22);
+}
+
+.app-steps li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0.72rem 0;
+  border-bottom: 1px solid rgba(233, 226, 210, 0.22);
+  color: #aba393;
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.app-steps .is-now {
+  color: #c8b994;
+}
+
+.app-steps .is-now i {
+  display: block;
+  width: 2.25rem;
+  height: 1px;
+  background: #c8b994;
+  transform-origin: left center;
+  animation: pay-in 1.1s ease forwards;
+}
+
+@keyframes pay-in {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
 }
 
 .placard {
@@ -999,6 +1154,10 @@ body.is-works .section-rule {
 
 .story-works .story-title {
   max-width: 11em;
+  margin-bottom: 0;
+}
+
+.story-works .industry-sub {
   margin-bottom: 2.25rem;
 }
 
@@ -1064,18 +1223,62 @@ body.is-works .section-rule {
 @media (max-width: 759px) {
   .mast,
   .mast-band {
+    background: transparent;
+  }
+
+  body.is-docked .mast,
+  body.is-docked .mast-band {
     background: #080807;
   }
 
-  .wordmark {
+  .wordmark,
+  .wordmark-slot {
     width: 8.75rem;
   }
 
+  .wordmark-hero {
+    margin-bottom: 32px;
+  }
+
   .room-hero {
-    align-items: flex-end;
+    flex-direction: column;
+    align-items: flex-start;
+    padding-top: calc(var(--mast, 72px) + 1.25rem);
     padding-bottom: calc(clamp(2.4rem, 8vh, 3.75rem) + env(safe-area-inset-bottom));
   }
 
+  .hero-phone {
+    align-self: center;
+    width: 100%;
+    margin-top: 1.75rem;
+  }
+
+  .phone {
+    width: 62vw;
+    height: auto;
+    margin-inline: auto;
+    border-radius: 36px;
+  }
+
+  .phone-screen {
+    padding: 2.4rem 0.85rem 0.9rem;
+    border-radius: 28px;
+  }
+
+  .phone-island {
+    top: 8px;
+    height: 16px;
+  }
+
+  .app-amount {
+    margin-bottom: 0.85rem;
+    font-size: 1.7rem;
+  }
+
+  .app-steps li {
+    padding: 0.48rem 0;
+    font-size: 13px;
+  }
   h1 {
     font-size: clamp(1.95rem, 9.5vw, 3.35rem);
     line-height: 1.05;
@@ -1235,6 +1438,7 @@ body.is-works .section-rule {
     mask-composite: add;
   }
 }
+
 
 @media (max-width: 600px) {
   .chart {
@@ -1425,7 +1629,8 @@ body.is-works .section-rule {
     transition: none;
   }
 
-  .rake {
+  .rake,
+  .app-steps .is-now i {
     animation: none;
   }
 
