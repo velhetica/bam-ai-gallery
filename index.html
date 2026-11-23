@@ -53,55 +53,64 @@
         </h2>
         <div class="studies">
           <article class="study">
-            <p class="study-label">Option 1</p>
+            <h3 class="study-label">Option 1</h3>
             <div class="road">
-              <p class="road-step">Claims</p>
-              <span class="road-link" aria-hidden="true"></span>
-              <p class="road-step">Insurer</p>
-              <span class="road-link is-paid" aria-hidden="true"></span>
-              <p class="road-step is-paid">Paid <span>to the practice</span></p>
+              <p class="road-step at-claims">Claims</p>
+              <span class="road-link at-to-insurer" aria-hidden="true"></span>
+              <p class="road-step at-insurer">Insurer</p>
+              <span class="road-link at-to-paid" aria-hidden="true"></span>
+              <p class="road-step at-paid is-paid">Paid</p>
+              <div class="road-dead">
+                <span class="road-drop" aria-hidden="true"></span>
+                <p>1 in 5 denied</p>
+                <span class="road-drop" aria-hidden="true"></span>
+                <p class="road-final">99%+ never appealed</p>
+              </div>
             </div>
-            <div class="road-stop">
-              <span class="road-drop" aria-hidden="true"></span>
-              <p>1 in 5 denied</p>
-              <p class="road-dead">99%+ never appealed</p>
-            </div>
-            <p class="study-note">Under 1% of those denials are appealed. 80.7% of appeals are overturned.</p>
+            <p class="study-note">Under 1% of denials are appealed. 80.7% of appeals are overturned.</p>
             <p class="study-close">Most denied money is never fought for.</p>
           </article>
           <article class="study">
-            <p class="study-label">Option 2</p>
+            <h3 class="study-label">Option 2</h3>
             <div class="trio">
               <p><b>1 in 5</b><span>denied</span></p>
-              <i aria-hidden="true"></i>
+              <svg class="trio-arrow" viewBox="0 0 64 12" aria-hidden="true"><line x1="0" y1="6" x2="52" y2="6"/><polyline points="46,1.5 54,6 46,10.5"/></svg>
               <p><b>&lt;1%</b><span>appealed</span></p>
-              <i aria-hidden="true"></i>
+              <svg class="trio-arrow" viewBox="0 0 64 12" aria-hidden="true"><line x1="0" y1="6" x2="52" y2="6"/><polyline points="46,1.5 54,6 46,10.5"/></svg>
               <p class="is-win"><b>80.7%</b><span>overturned</span></p>
             </div>
-            <p class="study-note">Of the denials, 99%+ are never appealed. The rest of claims are paid to the practice.</p>
+            <p class="study-note">Of the denials, 99%+ are never appealed.</p>
             <p class="study-close">Most denied money is never fought for.</p>
           </article>
           <article class="study">
-            <p class="study-label">Option 3</p>
+            <h3 class="study-label">Option 3</h3>
             <p class="bar-kicker">1 in 5 claims are denied</p>
             <div class="share" role="img" aria-label="Of denied claims, under 1 percent are appealed and 99 percent plus are never fought for">
               <div class="share-rest"><span>99%+ never fought for</span></div>
-              <div class="share-sliver" title="Appealed, under 1%"></div>
+              <div class="share-sliver"></div>
             </div>
-            <p class="share-key">The champagne sliver is appealed, under 1%. 80.7% of those appeals are overturned. Other claims are paid to the practice.</p>
+            <p class="sliver-label"><span class="leader" aria-hidden="true"></span>Under 1% appealed</p>
+            <p class="study-note">Of every denied claim: under 1% appealed. 80.7% of appeals win.</p>
             <p class="study-close">Most denied money is never fought for.</p>
           </article>
         </div>
-        <ol class="sources">
-          <li>KFF, Claims Denials and Appeals in ACA Marketplace Plans in 2023 (19.7% of 436M in-network claims; insurer range 1% to 54%).</li>
-          <li>KFF, MA prior authorization determinations in 2024 (53M requests, 4.1M denied). Prior auth requests, not claims.</li>
-          <li>ProPublica (2023) via Becker’s Payer. Cigna disputes the characterization and says PxDx reviews happen after care.</li>
-          <li>AMA prior authorization survey of 1,000 physicians, published March 2025.</li>
-        </ol>
+        <details class="sources">
+          <summary>Sources</summary>
+          <ol>
+            <li>KFF, Claims Denials and Appeals in ACA Marketplace Plans in 2023 (19.7% of 436M in-network claims; insurer range 1% to 54%).</li>
+            <li>KFF, MA prior authorization determinations in 2024 (53M requests, 4.1M denied). Prior auth requests, not claims.</li>
+            <li>ProPublica (2023) via Becker’s Payer. Cigna disputes the characterization and says PxDx reviews happen after care.</li>
+            <li>AMA prior authorization survey of 1,000 physicians, published March 2025.</li>
+          </ol>
+        </details>
       </section>
       <section class="story story-works" id="works">
         <div class="works-copy">
           <p class="eyebrow"><span class="line"><span>How it works</span></span></p>
+          <h2 class="story-title">
+            <span class="line"><span>Four steps.</span></span>
+            <span class="line"><span>Five agents.</span></span>
+          </h2>
           <ol class="steps">
             <li class="step">
               <span class="step-num">01</span>
@@ -125,13 +134,7 @@
             </li>
             <i class="step-cell" aria-hidden="true"></i>
           </ol>
-          <ol class="agent-index">
-            <li tabindex="0"><span>Verification &amp; eligibility</span><em>Coverage and benefits checked on every patient.</em></li>
-            <li tabindex="0"><span>Prior authorization</span><em>Submitted, tracked, and approved before you operate.</em></li>
-            <li tabindex="0"><span>Claim scrubbing</span><em>Every claim checked against payer rules and your fee schedules.</em></li>
-            <li tabindex="0"><span>Payment posting</span><em>Posted and reconciled so underpayments surface.</em></li>
-            <li tabindex="0"><span>Denials &amp; appeals</span><em>Worked and appealed so the first no isn’t the last word.</em></li>
-          </ol>
+          <p class="agent-line">Verification &amp; eligibility · Prior authorization · Claim scrubbing · Payment posting · Denials &amp; appeals</p>
         </div>
         <!-- Swap the photograph by replacing public/how-it-works.avif and public/how-it-works.webp. Keep them at native 1536×1024. Do not upscale. -->
         <figure class="works-photo">
