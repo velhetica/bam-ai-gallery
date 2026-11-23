@@ -527,12 +527,26 @@ function plateIndex(scrollY) {
   return current;
 }
 
+function applyField() {
+  const hero = document.querySelector('.room-hero');
+  const away = !hero || hero.getBoundingClientRect().bottom < window.innerHeight * 0.5;
+  document.body.classList.toggle('is-field-dim', away);
+  if (!ledger) return;
+  if (reduced) {
+    ledger.style.transform = 'none';
+    return;
+  }
+  const shift = scrollProgress() * 20;
+  ledger.style.transform = `translate3d(0, ${shift.toFixed(2)}px, 0)`;
+}
+
 function applyScroll() {
   const progress = scrollProgress();
   applyCircle(progress);
   applyHead(progress);
   applyGauge(progress);
   applyQuiet();
+  applyField();
   clearMast();
   if (!introDone) return;
   const next = plateIndex(window.scrollY);
@@ -1433,6 +1447,7 @@ function boot() {
   if (!reduced) window.addEventListener('scroll', onScroll, { passive: true });
   else window.addEventListener('scroll', () => {
     applyQuiet();
+    applyField();
     clearMast();
   }, { passive: true });
   applyQuiet();
